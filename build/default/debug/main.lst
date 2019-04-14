@@ -1,0 +1,524 @@
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-12-2019  17:26:47         PAGE  1
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00001     title       "LCD"
+                      00002     list        p=16f84A
+                      00003     radix       hex
+                      00004     include "p16f84a.inc"
+                      00001         LIST
+                      00002 
+                      00003 ;==========================================================================
+                      00004 ; Build date : Jan 21 2019
+                      00005 ;  MPASM PIC16F84A processor include
+                      00006 ; 
+                      00007 ;  (c) Copyright 1999-2019 Microchip Technology, All rights reserved
+                      00008 ;==========================================================================
+                      00009 
+                      00209         LIST
+                      00005 
+  0000000C            00006 COUNT1  EQU     d'12'
+  0000000D            00007 COUNT2  EQU     d'13'
+  0000000E            00008 COUNT3  EQU     d'14'
+  0000000F            00009 COUNT4  EQU     d'15'
+  00000010            00010 COUNT5  EQU     d'16'
+  00000011            00011 COUNT6  EQU     d'17'
+                      00012 
+  00000012            00013 CURSOR_POS  EQU d'18' ; Register stores detail about the cursor's current position. Bits[3:0] specify co
+                            lumn number, where as bit 4 specifies the row.
+                      00014                       ; Since there are 16 columns and 2 rows, such an encoding is guaranteed to span al
+                            l cells on the LCD.
+  00000013            00015 CHAR_CODE   EQU d'19'
+                      00016    
+  00000004            00017 LEFT_BTN    EQU d'4'
+  00000005            00018 RIGHT_BTN   EQU d'5'
+  00000006            00019 UP_DOWN_BTN EQU d'6'
+  00000007            00020 CONFIRM_BTN EQU d'7'
+                      00021  
+  00000041            00022 LTR_A   EQU b'01000001'
+  00000042            00023 LTR_B   EQU b'01000010' 
+  00000043            00024 LTR_C   EQU b'01000011' 
+  00000044            00025 LTR_D   EQU b'01000100'
+  00000045            00026 LTR_E   EQU b'01000101'
+  00000046            00027 LTR_F   EQU b'01000110'
+  00000047            00028 LTR_G   EQU b'01000111' 
+  00000048            00029 LTR_H   EQU b'01001000'
+  00000049            00030 LTR_I   EQU b'01001001' 
+  0000004A            00031 LTR_J   EQU b'01001010' 
+  0000004B            00032 LTR_K   EQU b'01001011'
+  0000004C            00033 LTR_L   EQU b'01001100'
+  0000004D            00034 LTR_M   EQU b'01001101' 
+  0000004E            00035 LTR_N   EQU b'01001110'
+  0000004F            00036 LTR_O   EQU b'01001111' 
+  00000050            00037 LTR_P   EQU b'01010000' 
+  00000051            00038 LTR_Q   EQU b'01010001' 
+  00000052            00039 LTR_R   EQU b'01010010'
+  00000053            00040 LTR_S   EQU b'01010011'         
+  00000054            00041 LTR_T   EQU b'01010100'         
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-12-2019  17:26:47         PAGE  2
+LCD
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+  00000055            00042 LTR_U   EQU b'01010101'         
+  00000056            00043 LTR_V   EQU b'01010110'         
+  00000057            00044 LTR_W   EQU b'01010111' 
+  00000058            00045 LTR_X   EQU b'01011000'         
+  00000059            00046 LTR_Y   EQU b'01011001'
+  0000005A            00047 LTR_Z   EQU b'01011010' 
+  000000A0            00048 LTR_SPACE   EQU b'10100000'
+                      00049         
+                      00050         ORG     0x0
+0000   2???           00051         GOTO    MAIN
+                      00052         ORG     0x04
+0004   180B           00053         BTFSC   INTCON, d'0'
+0005   2???           00054         GOTO RB4_INT
+                      00055 
+                      00056         
+                      00057 ; Register Configurations
+0006   0185           00058 MAIN    CLRF    PORTA
+0007   1683           00059         BSF     STATUS,RP0
+0008   30F0           00060         MOVLW   b'11110000' ; Set   RB[7:4] as inputs, the rest are outputs
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0009   0086           00061         MOVWF   TRISB
+                      00062         
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+000A   0185           00063         CLRF    TRISA       ; Set all pins of PORTA as outputs
+000B   1283           00064         BCF     STATUS,RP0
+                      00065         
+000C   3088           00066         MOVLW   b'10001000' ; Properly setup the interrupts. Only GIE and RBIF should be set.
+000D   008B           00067         MOVWF   INTCON
+                      00068         
+                      00069 
+000E   300B           00070 INDIRECT        MOVLW   d'11'
+000F   008D           00071         MOVWF   COUNT2
+0010   3020           00072         MOVLW   H'20'
+0011   0084           00073         MOVWF   FSR
+0012   0B8D           00074 LOOPX   DECFSZ  COUNT2,F
+0013   2???           00075         GOTO LOOPY
+0014   2???           00076         GOTO FINISH
+0015   080D           00077 LOOPY   MOVF    COUNT2,W
+0016   0080           00078         MOVWF   INDF
+Message[305]: Using default destination of 1 (file).
+0017   0A84           00079         INCF    FSR
+0018   2???           00080         GOTO    LOOPX
+0019                  00081 FINISH
+                      00082 
+                      00083 
+                      00084 ; Initialize the LCD
+0019   2???           00085 INIT    CALL    DELAYFMS
+001A   3002           00086         MOVLW   b'00010'
+001B   0085           00087         MOVWF   PORTA
+001C   2???           00088         CALL    ET
+001D   3002           00089         MOVLW   b'00010'
+001E   0085           00090         MOVWF   PORTA
+001F   2???           00091         CALL    ET
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-12-2019  17:26:47         PAGE  3
+LCD
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0020   300A           00092         MOVLW   b'01010'
+0021   0085           00093         MOVWF   PORTA
+0022   2???           00094         CALL    ET
+                      00095         
+0023   3000           00096         MOVLW   b'00000'
+0024   0085           00097         MOVWF   PORTA
+0025   2???           00098         CALL    ET
+0026   300C           00099         MOVLW   b'01100'
+0027   0085           00100         MOVWF   PORTA
+0028   2???           00101         CALL    ET
+                      00102         
+0029   3000           00103         MOVLW   b'00000'
+002A   0085           00104         MOVWF   PORTA
+002B   2???           00105         CALL    ET
+002C   3001           00106         MOVLW   b'00001'
+002D   0085           00107         MOVWF   PORTA
+002E   2???           00108         CALL    ET
+                      00109 
+002F   3000           00110         MOVLW   b'00000'
+0030   0085           00111         MOVWF   PORTA
+0031   2???           00112         CALL    ET
+0032   3006           00113         MOVLW   b'00110'
+0033   0085           00114         MOVWF   PORTA
+0034   2???           00115         CALL    ET
+                      00116 
+                      00117                         
+0035   3004           00118 WELCOME_SCREEN  MOVLW   b'00000100' ; Move the cursor to 0x04
+0036   0092           00119         MOVWF   CURSOR_POS
+                      00120 
+0037   2???           00121         CALL    PRINT_M
+0038   2???           00122         CALL    PRINT_E
+0039   2???           00123         CALL    PRINT_M
+003A   2???           00124         CALL    PRINT_O
+003B   2???           00125         CALL    PRINT_R
+003C   2???           00126         CALL    PRINT_Y
+                      00127         
+003D   300A           00128         MOVLW   b'00001010' ; Move the cursor to 0x0A (Column 10)
+003E   0092           00129         MOVWF   CURSOR_POS
+                      00130         
+003F   2???           00131         CALL    PRINT_G
+0040   2???           00132         CALL    PRINT_A
+0041   2???           00133         CALL    PRINT_M
+0042   2???           00134         CALL    PRINT_E
+                      00135 
+                      00136 
+0043   2???           00137 INF     GOTO    INF
+                      00138         
+                      00139         
+                      00140 ; ****************************************************************          PRINTING        ************
+                            ***********************************************************
+                      00141 
+                      00142 ;   WRITE_CHAR: Automatically writes a character with coordinates (CURSOR_COLUMN, CURSOR_LINE) and incre
+                            ments CURSOR_COLUMN for the next character
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-12-2019  17:26:47         PAGE  4
+LCD
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00143         
+0044   0093           00144 WRITE_CHAR      MOVWF   CHAR_CODE   ; In order to save lines, the W register is initially assumed to con
+                            tain the character code. Load it into CHAR_CODE register.
+0045   1A12           00145         BTFSC   CURSOR_POS,4    ; If line (encoded as bit 4) is not 0, i.e. line is 1 then specify the f
+                            irst bit in the address as a 4.
+0046   300C           00146         MOVLW   b'01100'
+0047   1E12           00147         BTFSS   CURSOR_POS,4            ; If line (encoded as bit 4) is not 1, i.e. line is 0 then speci
+                            fy the first bit in the address as a 0.
+0048   3008           00148         MOVLW   b'01000'
+0049   0085           00149         MOVWF   PORTA
+004A   2???           00150         CALL ET
+                      00151         
+004B   0812           00152         MOVF    CURSOR_POS,0
+004C   390F           00153         ANDLW   h'0f'       ; Mask the first 4 bits (which correspond to the column number)
+004D   0085           00154         MOVWF   PORTA
+004E   2???           00155         CALL ET
+                      00156         
+                      00157         ;   Handling character code: A character code is an 8-bit number representing a printable charac
+                            ter. To print it to the screen, we should mask the upper four
+                      00158         ;   bits, shift left 4 times, set the first bit to 1 and write to the LCD. Then, mask the lower 
+                            four bits, set the first bit to 1 and write to the LCD.
+                      00159         
+004F   0E13           00160         SWAPF   CHAR_CODE, 0 ; Move contents of CHAR_CODE to W, swapping the nibbles.
+0050   390F           00161         ANDLW   h'0f'        ; Mask the first 4 bits (which are now in the lower bits after swapping)
+0051   3E10           00162         ADDLW   h'10'        ; Set the first bit of the W reg (adding 16)
+                      00163         
+0052   0085           00164         MOVWF   PORTA
+0053   2???           00165         CALL ET
+                      00166         
+0054   0813           00167         MOVF    CHAR_CODE, 0 ; Move contents of CHAR_CODE register to W register
+0055   390F           00168         ANDLW   h'0f'        ; Mask the last 4 bits
+0056   3E10           00169         ADDLW   h'10'        ; Set the first bit of the W reg (adding 16)
+                      00170         
+0057   0085           00171         MOVWF   PORTA
+0058   2???           00172         CALL ET
+0059   0A92           00173         INCF    CURSOR_POS,1    ; Increment the column number, equivalent to moving the cursor to await 
+                            the next character.
+005A   0008           00174         RETURN
+                      00175         
+                      00176         
+                      00177 ; One-liners to print specific characters (feel free to abuse)
+                      00178         
+005B   3041           00179 PRINT_A MOVLW   LTR_A
+005C   2???           00180         CALL WRITE_CHAR
+005D   0008           00181         RETURN
+                      00182         
+005E   3045           00183 PRINT_E MOVLW   LTR_E
+005F   2???           00184         CALL WRITE_CHAR
+0060   0008           00185         RETURN
+                      00186 
+0061   3047           00187 PRINT_G MOVLW   LTR_G
+0062   2???           00188         CALL WRITE_CHAR
+0063   0008           00189         RETURN
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-12-2019  17:26:47         PAGE  5
+LCD
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00190         
+0064   304D           00191 PRINT_M MOVLW   LTR_M
+0065   2???           00192         CALL WRITE_CHAR
+0066   0008           00193         RETURN
+                      00194 
+0067   304F           00195 PRINT_O MOVLW   LTR_O
+0068   2???           00196         CALL WRITE_CHAR
+0069   0008           00197         RETURN
+                      00198 
+006A   3052           00199 PRINT_R MOVLW   LTR_R
+006B   2???           00200         CALL WRITE_CHAR
+006C   0008           00201         RETURN
+                      00202         
+006D   304D           00203 PRINT_Y MOVLW   LTR_M
+006E   2???           00204         CALL WRITE_CHAR
+006F   0008           00205         RETURN
+                      00206 
+                      00207 ; ***********************************************************************   INTERRUPTS      ************
+                            **********************************************************
+                      00208         
+                      00209 ; NOTE: Should all of these be BTFSS?
+                      00210         
+0070   2???           00211 RB4_INT CALL    DELAYMS
+0071   1A06           00212         BTFSC   PORTB,LEFT_BTN
+0072   0000           00213         NOP ; TODO: Implement functionality
+0073   1A86           00214         BTFSC   PORTB,RIGHT_BTN
+0074   0000           00215         NOP ; TODO: Implement functionality
+0075   1B06           00216         BTFSC   PORTB,UP_DOWN_BTN
+0076   0000           00217         NOP ; TODO: Implement functionality
+0077   1B86           00218         BTFSC   PORTB,CONFIRM_BTN
+0078   0000           00219         NOP ; TODO: Implement functionality
+0079   0009           00220         RETFIE
+                      00221         
+                      00222 ; ***********************************************************************       DELAYS      ************
+                            **********************************************************
+                      00223         
+                      00224 ; DELAYS: Causes a 1s delay, uses registers COUNT4, COUNT5 & COUNT6.
+                      00225         
+007A   3000           00226 DELAYS  MOVLW   H'00'
+007B   0091           00227         MOVWF   COUNT6
+007C   0090           00228         MOVWF   COUNT5
+007D   3005           00229         MOVLW   0x5
+007E   008F           00230         MOVWF   COUNT4
+                      00231         
+007F   0F91           00232 LOOP    INCFSZ  COUNT6,F
+0080   2???           00233         GOTO    LOOP
+0081   0F90           00234         INCFSZ  COUNT5,F
+0082   2???           00235         GOTO    LOOP
+0083   0B8F           00236         DECFSZ  COUNT4,F
+0084   2???           00237         GOTO    LOOP
+0085   0008           00238         RETURN
+                      00239         
+                      00240 ; DELAYFMS: Causes a 40 ms delay, uses register COUNT1.
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-12-2019  17:26:47         PAGE  6
+LCD
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00241         
+0086   3025           00242 DELAYFMS        MOVLW   d'37'
+0087   008C           00243         MOVWF   COUNT1
+0088   2???           00244 LOOP3   CALL    DELAYMS
+0089   0B8C           00245         DECFSZ  COUNT1,F
+008A   2???           00246         GOTO    LOOP3
+008B   0008           00247         RETURN
+                      00248 
+                      00249 ; ET: Writes data to LCD.
+008C   1486           00250 ET      BSF     PORTB,1
+008D   0000           00251         NOP
+008E   1086           00252         BCF     PORTB,1
+008F   2???           00253         CALL DELAYFMS
+0090   0008           00254         RETURN 
+                      00255 
+                      00256 ; DELAYMS: Causes a 1 ms delay, uses registers COUNT2 & COUNT 3.
+                      00257         
+0091   3000           00258 DELAYMS MOVLW d'0'          
+0092   008D           00259         MOVWF   COUNT2
+0093   304C           00260         MOVLW   d'76'
+0094   008E           00261         MOVWF   COUNT3
+0095   0F8D           00262 LOOP1   INCFSZ  COUNT2,F
+0096   2???           00263         GOTO    LOOP1
+0097   0000           00264 LOOP2   NOP     
+0098   0B8E           00265         DECFSZ  COUNT3,F
+0099   2???           00266         GOTO LOOP2
+009A   0008           00267         RETURN
+                      00268 
+                      00269         END
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-12-2019  17:26:47         PAGE  7
+LCD
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+C                                 00000000
+CHAR_CODE                         00000013
+CONFIRM_BTN                       00000007
+COUNT1                            0000000C
+COUNT2                            0000000D
+COUNT3                            0000000E
+COUNT4                            0000000F
+COUNT5                            00000010
+COUNT6                            00000011
+CURSOR_POS                        00000012
+DC                                00000001
+DELAYFMS                          00000086
+DELAYMS                           00000091
+DELAYS                            0000007A
+EEADR                             00000009
+EECON1                            00000088
+EECON2                            00000089
+EEDATA                            00000008
+EEIE                              00000006
+EEIF                              00000004
+ET                                0000008C
+F                                 00000001
+FINISH                            00000019
+FSR                               00000004
+GIE                               00000007
+INDF                              00000000
+INDIRECT                          0000000E
+INF                               00000043
+INIT                              00000019
+INTCON                            0000000B
+INTE                              00000004
+INTEDG                            00000006
+INTF                              00000001
+IRP                               00000007
+LEFT_BTN                          00000004
+LOOP                              0000007F
+LOOP1                             00000095
+LOOP2                             00000097
+LOOP3                             00000088
+LOOPX                             00000012
+LOOPY                             00000015
+LTR_A                             00000041
+LTR_B                             00000042
+LTR_C                             00000043
+LTR_D                             00000044
+LTR_E                             00000045
+LTR_F                             00000046
+LTR_G                             00000047
+LTR_H                             00000048
+LTR_I                             00000049
+LTR_J                             0000004A
+LTR_K                             0000004B
+LTR_L                             0000004C
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-12-2019  17:26:47         PAGE  8
+LCD
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+LTR_M                             0000004D
+LTR_N                             0000004E
+LTR_O                             0000004F
+LTR_P                             00000050
+LTR_Q                             00000051
+LTR_R                             00000052
+LTR_S                             00000053
+LTR_SPACE                         000000A0
+LTR_T                             00000054
+LTR_U                             00000055
+LTR_V                             00000056
+LTR_W                             00000057
+LTR_X                             00000058
+LTR_Y                             00000059
+LTR_Z                             0000005A
+MAIN                              00000006
+NOT_PD                            00000003
+NOT_RBPU                          00000007
+NOT_TO                            00000004
+OPTION_REG                        00000081
+PCL                               00000002
+PCLATH                            0000000A
+PORTA                             00000005
+PORTB                             00000006
+PRINT_A                           0000005B
+PRINT_E                           0000005E
+PRINT_G                           00000061
+PRINT_M                           00000064
+PRINT_O                           00000067
+PRINT_R                           0000006A
+PRINT_Y                           0000006D
+PS0                               00000000
+PS1                               00000001
+PS2                               00000002
+PSA                               00000003
+RA0                               00000000
+RA1                               00000001
+RA2                               00000002
+RA3                               00000003
+RA4                               00000004
+RB0                               00000000
+RB1                               00000001
+RB2                               00000002
+RB3                               00000003
+RB4                               00000004
+RB4_INT                           00000070
+RB5                               00000005
+RB6                               00000006
+RB7                               00000007
+RBIE                              00000003
+RBIF                              00000000
+RD                                00000000
+RIGHT_BTN                         00000005
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-12-2019  17:26:47         PAGE  9
+LCD
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+RP0                               00000005
+RP1                               00000006
+STATUS                            00000003
+T0CS                              00000005
+T0IE                              00000005
+T0IF                              00000002
+T0SE                              00000004
+TMR0                              00000001
+TMR0IE                            00000005
+TMR0IF                            00000002
+TRISA                             00000085
+TRISA0                            00000000
+TRISA1                            00000001
+TRISA2                            00000002
+TRISA3                            00000003
+TRISA4                            00000004
+TRISB                             00000086
+TRISB0                            00000000
+TRISB1                            00000001
+TRISB2                            00000002
+TRISB3                            00000003
+TRISB4                            00000004
+TRISB5                            00000005
+TRISB6                            00000006
+TRISB7                            00000007
+UP_DOWN_BTN                       00000006
+W                                 00000000
+WELCOME_SCREEN                    00000035
+WR                                00000001
+WREN                              00000002
+WRERR                             00000003
+WRITE_CHAR                        00000044
+Z                                 00000002
+_CONFIG                           00002007
+_CP_OFF                           00003FFF
+_CP_ON                            0000000F
+_DEVID1                           00002006
+_FOSC_EXTRC                       00003FFF
+_FOSC_HS                          00003FFE
+_FOSC_LP                          00003FFC
+_FOSC_XT                          00003FFD
+_HS_OSC                           00003FFE
+_IDLOC0                           00002000
+_IDLOC1                           00002001
+_IDLOC2                           00002002
+_IDLOC3                           00002003
+_LP_OSC                           00003FFC
+_PWRTE_OFF                        00003FFF
+_PWRTE_ON                         00003FF7
+_RC_OSC                           00003FFF
+_WDTE_OFF                         00003FFB
+_WDTE_ON                          00003FFF
+_WDT_OFF                          00003FFB
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-12-2019  17:26:47         PAGE 10
+LCD
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+_WDT_ON                           00003FFF
+_XT_OSC                           00003FFD
+__16F84A                          00000001
+__DEBUG                           
+__MPLAB_DEBUGGER_SIMULATOR        1
+
+Errors   :     0
+Warnings :     0 reported,     0 suppressed
+Messages :     3 reported,     0 suppressed
+
+
