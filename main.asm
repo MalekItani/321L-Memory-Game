@@ -1,4 +1,4 @@
-    title	"LCD"
+title	"LCD"
     list	p=16f84A
     radix	hex
     include "p16f84a.inc"
@@ -76,7 +76,7 @@ MAIN	CLRF	PORTA
 	CLRF	TRISA	    ; Set all pins of PORTA as outputs
 	BCF	STATUS,RP0
 	
-	MOVLW	b'10001000' ; Properly setup the interrupts. Only GIE and RBIF should be set.
+	MOVLW	b'10001000' ; Properly setup the interrupts. Only GIE and RBIE should be set.
 	MOVWF	INTCON
 	
 
@@ -267,6 +267,10 @@ PRINT_Y	MOVLW	LTR_M
 PRINT_ASTERISK	MOVLW	LTR_ASTERISK
 	CALL WRITE_CHAR
 	RETURN
+                                         
+PRINT_SPACE	MOVLW	LTR_SPACE        ; "print space in order to erase the char"
+	CALL WRITE_CHAR
+	RETURN
 	
 PRINT_1	MOVLW	LTR_1
 	CALL WRITE_CHAR
@@ -345,4 +349,18 @@ LOOP2	NOP
 	RETURN
 
 	END
-		
+;--------------------------------------functions--------------------------------------;
+HANDLE_LEFT	DECFSZ	CURSOR_POS,F	; "Check if the cursor is in the left most position in order to send it to the right most one" 
+	RETURN	; "if cursor is not at 0 just decrement"
+	MOVLW	b'00001111' ; "move to right most position"
+	MOVWF	CURSOR_POS
+	RETURN			
+
+HANDLE_RIGHT	MOVLW	b'00001111'	
+	SUBWF	CURSOR_POS,F	; "Check if the cursor is in the right most position to send it to the left most one" 
+	INCFSZ	W,F
+	GOTO U1	; if cursor is NOT AT 1111 just INCcrement
+	INCF	CURSOR_POS 
+	RETURN
+U1	CLRF	CURSOR_POS
+	RETURN		
