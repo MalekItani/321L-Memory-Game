@@ -1,4 +1,4 @@
-title	"LCD"
+    title	"LCD"
     list	p=16f84A
     radix	hex
     include "p16f84a.inc"
@@ -15,7 +15,10 @@ CURSOR_POS  EQU	d'18' ; Register stores detail about the cursor's current positi
 CHAR_CODE   EQU	d'19'
 
 FLAG_REG    EQU d'20' ; Register containing some flags to be used within the program. Structure: [-,-,-,-,-,-,-,Main Menu Flag]
-   
+
+ADDITIONAL	EQU d'21' ; "bits [2:0] contains the position of the * in the second scene"
+                      ; "00->6  -- 01->9  -- 10 ->12" 
+
 LEFT_BTN    EQU	d'4'
 RIGHT_BTN   EQU	d'5'
 UP_DOWN_BTN EQU	d'6'
@@ -363,4 +366,30 @@ HANDLE_RIGHT	MOVLW	b'00001111'
 	INCF	CURSOR_POS 
 	RETURN
 U1	CLRF	CURSOR_POS
-	RETURN		
+	RETURN
+
+;--------------------------*functions*-----------------------
+MOVE_*_LEFT	BTFSC	ADDITIONAL,0
+	GOTO UP1 ;"last bit is zero"
+	BCF	ADDITIONAL,0 ; "01 CASE"->"00"
+	RETURN
+UP1	BTFSC	ADDITIONAL,1 
+	GOTO	UP2
+	BSF	ADITIONAL,0	; "00 CASE" ->"11"
+	BSF	ADDITIONAL,1
+	RETURN
+UP2	BCF	ADDITIONAL,0 ; "11 CASE" ->"10"
+	RETURN				
+
+
+MOVE_*_RIGHT	BTFSC	ADDITIONAL,0
+	GOTO UP1 ;"last bit is zero"
+	BSF	ADDITIONAL,1 ; "01 CASE"->"11"
+	RETURN
+UP1	BTFSC	ADDITIONAL,1 
+	GOTO	UP2
+	BSF	ADITIONAL,0	; "00 CASE" ->"01"
+	RETURN
+UP2	BCF	ADDITIONAL,0 ; "11 CASE" ->"00"
+	BCF	ADDITIONAL,1
+	RETURN	
