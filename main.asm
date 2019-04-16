@@ -14,12 +14,13 @@ CURSOR_POS  EQU	d'18' ; Register stores detail about the cursor's current positi
 		      ; Since there are 16 columns and 2 rows, such an encoding is guaranteed to span all cells on the LCD.
 CHAR_CODE   EQU	d'19'
 
-FLAG_REG    EQU d'20' ; Register containing some flags to be used within the program. Structure: [-,-,-,-,-,-,-,Main Menu Flag]
+FLAG_REG    EQU d'20' ; Register containing some flags to be used within the program. Structure: [-,-,-,-,-,CONFIRM_STATUS,MODE_BIT2,MODE_BIT1]
    
 LEFT_BTN    EQU	d'4'
 RIGHT_BTN   EQU	d'5'
 UP_DOWN_BTN EQU	d'6'
 CONFIRM_BTN EQU	d'7'
+LTR_BOX   EQU b'11011011'
  
 LTR_A	EQU b'01000001'
 LTR_B	EQU b'01000010'	
@@ -60,6 +61,20 @@ LTR_9	EQU b'00110000'
 LTR_ASTERISK	EQU b'00101010'
 LTR_SPACE   EQU	b'10100000'
 	
+CELL_11 EQU d'52'
+CELL_12 EQU d'53'
+CELL_13 EQU d'54'
+CELL_14 EQU d'55'
+CELL_15 EQU d'56'
+CELL_16 EQU d'57'
+
+CELL_21 EQU d'58'
+CELL_22 EQU d'59'
+CELL_23 EQU d'60'
+CELL_24 EQU d'61'
+CELL_25 EQU d'62'
+CELL_26 EQU d'63'   
+
 	ORG	0x0
 	GOTO	MAIN
 	ORG	0x04
@@ -149,6 +164,7 @@ WELCOME_SCREEN	MOVLW	b'00000100' ; Move the cursor to 0x04
 	CALL	DELAYS	; TODO: Implement some longer delay (4/5 seconds maybe?)
 
 MAIN_MENU   CALL    CLEAR_SCREEN
+	CLRF	FLAG_REG ; Clear all flags
 	CALL	PRINT_M
 	CALL	PRINT_O
 	CALL	PRINT_D
@@ -171,7 +187,81 @@ MAIN_MENU   CALL    CLEAR_SCREEN
 	CALL	PRINT_3
 	
 
-INF	GOTO	INF
+INF BTFSC   FLAG_REG,1
+    GOTO  MODE2_OR_3
+    GOTO  MODE1_OR_INF
+
+MODE2_OR_3 BTFSC    FLAG_REG,0
+    GOTO  MODE3
+    GOTO  MODE2
+
+MODE1_OR_INF BTFSC  FLAG_REG,0
+    GOTO  MODE1
+    GOTO  INF
+
+
+MODE1 CALL  POPULATE_TABLE
+    CALL  HIDE_TABLE
+LOOP_M1 GOTO	LOOP_M1
+
+
+MODE2 CALL  POPULATE_TABLE
+    CALL  HIDE_TABLE
+LOOP_M2	GOTO	LOOP_M2
+
+
+MODE3 CALL  POPULATE_TABLE
+    CALL  HIDE_TABLE
+LOOP_M3 GOTO    LOOP_M3
+	
+	
+POPULATE_TABLE MOVLW	LTR_A
+    MOVWF  CELL_11
+    MOVLW  LTR_A
+    MOVWF  CELL_12
+    MOVLW  LTR_B
+    MOVWF  CELL_13
+    MOVLW  LTR_B
+    MOVWF  CELL_14
+    MOVLW  LTR_C
+    MOVWF  CELL_15
+    MOVLW  LTR_C
+    MOVWF  CELL_16
+    MOVLW  LTR_D
+    MOVWF  CELL_21
+    MOVLW  LTR_D
+    MOVWF  CELL_22
+    MOVLW  LTR_E
+    MOVWF  CELL_23
+    MOVLW  LTR_E
+    MOVWF  CELL_24
+    MOVLW  LTR_F
+    MOVWF  CELL_25
+    MOVLW  LTR_F
+    MOVWF  CELL_26
+    RETURN 
+
+
+HIDE_TABLE MOVLW    b'00000000' ; Move the cursor to 0x00
+    MOVWF  CURSOR_POS
+
+    CALL  PRINT_BOX
+    CALL  PRINT_BOX
+    CALL  PRINT_BOX
+    CALL  PRINT_BOX
+    CALL  PRINT_BOX
+    CALL  PRINT_BOX
+
+    MOVLW  b'00010000' ; Move cursor to 0x40
+    MOVWF  CURSOR_POS
+
+    CALL  PRINT_BOX
+    CALL  PRINT_BOX
+    CALL  PRINT_BOX
+    CALL  PRINT_BOX
+    CALL  PRINT_BOX
+    CALL  PRINT_BOX
+    RETURN
 	
 	
 ; ****************************************************************	    LCD INTERFACING	    ***********************************************************************
@@ -268,6 +358,14 @@ PRINT_ASTERISK	MOVLW	LTR_ASTERISK
 	CALL WRITE_CHAR
 	RETURN
 	
+PRINT_SPACE MOVLW   LTR_SPACE        ; "print space in order to erase the char"
+    CALL WRITE_CHAR
+    RETURN
+	
+PRINT_BOX MOVLW	LTR_BOX
+    CALL  WRITE_CHAR
+    RETURN
+	
 PRINT_1	MOVLW	LTR_1
 	CALL WRITE_CHAR
 	RETURN
@@ -292,9 +390,16 @@ RB4_INT	CALL	DELAYFMS ;  Debounce
 	BTFSC	PORTB,UP_DOWN_BTN
 	CALL	HANDLE_UP_DOWN
 	BTFSC	PORTB,CONFIRM_BTN
-	NOP ; TODO: Implement functionality
+	CALL	HANDLE_CONFIRM
 	BCF INTCON, 0
 	RETFIE
+
+HANDLE_CONFIRM	; Unless you're in the Main Menu, toggle the value of the CONFIRM_STATUS flag (Bit 2 on FLAG_REG) and reveal the character underneath, otherwise go into desired mode.
+	BTFSC	FLAG_REG, 0 ;
+	GOTO	SKIP_HANDLE_UP_DOWN
+	MOVLW	b'00010000'
+	XORWF	CURSOR_POS, 1
+SKIP_HANDLE_UP_DOWN  RETURN	
 	
 HANDLE_UP_DOWN	; Unless you're in the Main Menu, toggle the row that the cursor is at
 	BTFSC	FLAG_REG, 0 ; Check if the Main Menu flag is set, skip accordingly
