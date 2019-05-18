@@ -1,4 +1,4 @@
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE  1
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE  1
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
@@ -35,8 +35,8 @@ LOC  OBJECT CODE     LINE SOURCE TEXT
                             l cells on the LCD.
   00000013            00018 CHAR_CODE   EQU d'19'
                       00019 
-  00000014            00020 FLAG_REG    EQU d'20' ; Register containing some flags to be used within the program. Structure: [-,-,-,
-                            -,-,CONFIRM_STATUS,MODE_BIT2,MODE_BIT1] within the program. Structure: [-,-,-,-,-,-,-,Main Menu 
+  00000014            00020 FLAG_REG    EQU d'20' ; Register containing some flags to be used within the program. Structure: [-,-,MO
+                            DE1_WEAK,MODE1_AVG,GAME_OVER,CONFIRM_STATUS,MODE_BIT2,MODE_BIT1] within the program.
                       00021 
   00000015            00022 TMP     EQU d'21'  
   00000004            00023 LEFT_BTN    EQU d'4'
@@ -57,7 +57,7 @@ LOC  OBJECT CODE     LINE SOURCE TEXT
   0000004B            00038 LTR_K EQU b'01001011'
   0000004C            00039 LTR_L EQU b'01001100'
   0000004D            00040 LTR_M EQU b'01001101' 
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE  2
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE  2
 LCD
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
@@ -90,696 +90,992 @@ LOC  OBJECT CODE     LINE SOURCE TEXT
   000000A0            00065 LTR_SPACE   EQU b'10100000'
   000000DB            00066 LTR_BOX   EQU b'11011011' 
   000000A3            00067 LTR_SEPARATOR   EQU     b'10100011'
-                      00068 
-  00000034            00069 CELL_11 EQU d'52'
-  00000035            00070 CELL_12 EQU d'53'
-  00000036            00071 CELL_13 EQU d'54'
-  00000037            00072 CELL_14 EQU d'55'
-  00000038            00073 CELL_15 EQU d'56'
-  00000039            00074 CELL_16 EQU d'57'
-                      00075 
-  0000003A            00076 CELL_21 EQU d'58'
-  0000003B            00077 CELL_22 EQU d'59'
-  0000003C            00078 CELL_23 EQU d'60'
-  0000003D            00079 CELL_24 EQU d'61'
-  0000003E            00080 CELL_25 EQU d'62'
-  0000003F            00081 CELL_26 EQU d'63'   
-                      00082 
-                      00083         ORG     0x0
-0000   2???           00084         GOTO    MAIN
-                      00085         ORG     0x04
-0004   180B           00086         BTFSC   INTCON, d'0'
-0005   2???           00087         GOTO RB4_INT
-                      00088 
-                      00089         
-                      00090 ; Register Configurations
-0006   0185           00091 MAIN    CLRF    PORTA
-0007   1683           00092         BSF     STATUS,RP0
-0008   30F0           00093         MOVLW   b'11110000' ; Set   RB[7:4] as inputs, the rest are outputs
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE  3
+  000000FF            00068 LTR_SHADE   EQU b'11111111'
+                      00069 
+                      00070         
+                      00071 ; Explanation of cell register choice:
+                      00072 ; Here we intend to use indirect addressing to access the elements inside the cells, given that our curs
+                            or pos is encoded in such a way where
+                      00073 ; bit 4 corresponds to row number and bits[3:0] correspond to col number, and since the board is 2x6 cel
+                            ls wide, then the valid cursor positions
+                      00074 ; in-game will range from 00000 to 00101 on (0 to 5) in row 1 and from 10000 to 10101 (16 to 21) in row 
+                            2. In order to make it simple to access,
+                      00075 ; and in order to use valid registed to store the Letters in, we add some offset to the FSR, which is 42
+                            , chosen so that the last cell (with CURSOR_POS=21) occupies the
+                      00076 ; last available row register in memory (register 63).
+  0000002A            00077 CELL_11 EQU d'42'
+  0000002B            00078 CELL_12 EQU d'43'
+  0000002C            00079 CELL_13 EQU d'44'
+  0000002D            00080 CELL_14 EQU d'45'
+  0000002E            00081 CELL_15 EQU d'46'
+  0000002F            00082 CELL_16 EQU d'47'
+                      00083 
+  0000003A            00084 CELL_21 EQU d'58'
+  0000003B            00085 CELL_22 EQU d'59'
+  0000003C            00086 CELL_23 EQU d'60'
+  0000003D            00087 CELL_24 EQU d'61'
+  0000003E            00088 CELL_25 EQU d'62'
+  0000003F            00089 CELL_26 EQU d'63'   
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE  3
 LCD
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
+                      00090  
+  00000030            00091 CARD1   EQU d'48'
+  00000031            00092 CARD2   EQU d'49'
+                      00093 
+  00000032            00094 WEAKNESS    EQU d'50'
+  00000033            00095 ROW1    EQU d'51'       ; Stores the state of the cells in row 1 (either open or closed)
+  00000034            00096 ROW2    EQU d'52'       ; Stores the state of the cells in row 2 (either open or closed)
+  00000035            00097 NUM_LEFT EQU    d'53'
+  00000036            00098 NUM_ERRORS  EQU d'54'
+                      00099         
+                      00100         
+  00000039            00101 CELL_ADDRESS    EQU d'57'
+                      00102 
+                      00103 
+                      00104         ORG     0x0
+0000   2???           00105         GOTO    MAIN
+                      00106         ORG     0x04
+0004   180B           00107         BTFSC   INTCON, d'0'
+0005   2???           00108         GOTO RB4_INT
+                      00109 
+                      00110         
+                      00111 ; Register Configuration
+0006   0185           00112 MAIN    CLRF    PORTA
+0007   1683           00113         BSF     STATUS,RP0
+0008   30F0           00114         MOVLW   b'11110000' ; Set   RB[7:4] as inputs, the rest are outputs
 Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
-0009   0086           00094         MOVWF   TRISB
-                      00095         
+0009   0086           00115         MOVWF   TRISB
+                      00116         
 Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
-000A   0185           00096         CLRF    TRISA       ; Set all pins of PORTA as outputs
-000B   1283           00097         BCF     STATUS,RP0
-                      00098         
-                      00099 
-000C   300B           00100 INDIRECT        MOVLW   d'11'
-000D   008D           00101         MOVWF   COUNT2
-000E   3020           00102         MOVLW   H'20'
-000F   0084           00103         MOVWF   FSR
-0010   0B8D           00104 LOOPX   DECFSZ  COUNT2,F
-0011   2???           00105         GOTO LOOPY
-0012   2???           00106         GOTO FINISH
-0013   080D           00107 LOOPY   MOVF    COUNT2,W
-0014   0080           00108         MOVWF   INDF
-Message[305]: Using default destination of 1 (file).
-0015   0A84           00109         INCF    FSR
-0016   2???           00110         GOTO    LOOPX
-0017                  00111 FINISH
-                      00112 
-                      00113 
-                      00114 ; Initialize the LCD
-0017   2???           00115 INIT    CALL    DELAYFMS
-0018   3002           00116         MOVLW   b'00010'
-0019   0085           00117         MOVWF   PORTA
-001A   2???           00118         CALL    ET
-001B   3002           00119         MOVLW   b'00010'
-001C   0085           00120         MOVWF   PORTA
-001D   2???           00121         CALL    ET
-001E   300A           00122         MOVLW   b'01010'
-001F   0085           00123         MOVWF   PORTA
-0020   2???           00124         CALL    ET
-                      00125         
-0021   3000           00126         MOVLW   b'00000'
-0022   0085           00127         MOVWF   PORTA
-0023   2???           00128         CALL    ET
-0024   300C           00129         MOVLW   b'01100'
-0025   0085           00130         MOVWF   PORTA
-0026   2???           00131         CALL    ET
-                      00132         
-0027   3000           00133         MOVLW   b'00000'
-0028   0085           00134         MOVWF   PORTA
-0029   2???           00135         CALL    ET
-002A   3001           00136         MOVLW   b'00001'
-002B   0085           00137         MOVWF   PORTA
-002C   2???           00138         CALL    ET
-                      00139 
-002D   3000           00140         MOVLW   b'00000'
-002E   0085           00141         MOVWF   PORTA
-002F   2???           00142         CALL    ET
-0030   3006           00143         MOVLW   b'00110'
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE  4
+000A   0185           00117         CLRF    TRISA       ; Set all pins of PORTA as outputs
+000B   1283           00118         BCF     STATUS,RP0
+                      00119 
+                      00120 ; Initialize the LCD
+000C   2???           00121 INIT    CALL    DELAYFMS
+000D   3002           00122         MOVLW   b'00010'
+000E   0085           00123         MOVWF   PORTA
+000F   2???           00124         CALL    ET
+0010   3002           00125         MOVLW   b'00010'
+0011   0085           00126         MOVWF   PORTA
+0012   2???           00127         CALL    ET
+0013   300A           00128         MOVLW   b'01010'
+0014   0085           00129         MOVWF   PORTA
+0015   2???           00130         CALL    ET
+                      00131         
+0016   3000           00132         MOVLW   b'00000'
+0017   0085           00133         MOVWF   PORTA
+0018   2???           00134         CALL    ET
+0019   300C           00135         MOVLW   b'01100'
+001A   0085           00136         MOVWF   PORTA
+001B   2???           00137         CALL    ET
+                      00138         
+001C   3000           00139         MOVLW   b'00000'
+001D   0085           00140         MOVWF   PORTA
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE  4
 LCD
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-0031   0085           00144         MOVWF   PORTA
-0032   2???           00145         CALL    ET
-                      00146 
-                      00147                         
-0033   3002           00148 WELCOME_SCREEN MOVLW b'00000010' ; Move the cursor to 0x04
-0034   0092           00149         MOVWF CURSOR_POS
-                      00150         
-0035   2???           00151         CALL PRINT_M
-0036   2???           00152         CALL PRINT_E
-0037   2???           00153         CALL PRINT_M
-0038   2???           00154         CALL PRINT_O
-0039   2???           00155         CALL PRINT_R
-003A   2???           00156         CALL PRINT_Y
-                      00157         
-003B   300A           00158         MOVLW b'00001010' ; Move the cursor to 0x0C (Column 10)
-003C   0092           00159         MOVWF CURSOR_POS
+001E   2???           00141         CALL    ET
+001F   3001           00142         MOVLW   b'00001'
+0020   0085           00143         MOVWF   PORTA
+0021   2???           00144         CALL    ET
+                      00145 
+0022   3000           00146         MOVLW   b'00000'
+0023   0085           00147         MOVWF   PORTA
+0024   2???           00148         CALL    ET
+0025   3006           00149         MOVLW   b'00110'
+0026   0085           00150         MOVWF   PORTA
+0027   2???           00151         CALL    ET
+                      00152 
+                      00153                         
+0028                  00154 WELCOME_SCREEN 
+0028   2???           00155         CALL    CLEAR_SCREEN
+0029   0186           00156         CLRF    PORTB
+002A   0194           00157         CLRF    FLAG_REG
+002B   3002           00158         MOVLW b'00000010' ; Move the cursor to 0x04
+002C   0092           00159         MOVWF CURSOR_POS
                       00160         
-003D   2???           00161         CALL PRINT_G
-003E   2???           00162         CALL PRINT_A
-003F   2???           00163         CALL PRINT_M
-0040   2???           00164         CALL PRINT_E
-                      00165         
-0041   3000           00166         MOVLW b'00000000' ; "move the cursor to 0x00"
-0042   0092           00167         MOVWF CURSOR_POS
-                      00168         
-0043   2???           00169         CALL DELAYS ; TODO: Implement some longer delay (4 or  seconds maybe?)
-                      00170 
-0044   2???           00171 MAIN_MENU   CALL    CLEAR_SCREEN
-0045   0194           00172         CLRF    FLAG_REG
-0046   3088           00173         MOVLW   b'10001000' ; Properly setup the interrupts. Only GIE and RBIE should be set.
-0047   008B           00174         MOVWF   INTCON
-0048   2???           00175         CALL PRINT_M
-0049   2???           00176         CALL PRINT_O
-004A   2???           00177         CALL PRINT_D
-004B   2???           00178         CALL PRINT_E
-                      00179         
-004C   3002           00180         MOVLW d'2'   ; Move the cursor two units to the right
-004D   0792           00181         ADDWF CURSOR_POS, 1
-                      00182         
-004E   2???           00183         CALL PRINT_ASTERISK
-004F   2???           00184         CALL PRINT_1
-                      00185         
-0050   3002           00186         MOVLW d'2'   ; Move the cursor two units to the right
-0051   0792           00187         ADDWF CURSOR_POS, 1
+002D   2???           00161         CALL PRINT_M
+002E   2???           00162         CALL PRINT_E
+002F   2???           00163         CALL PRINT_M
+0030   2???           00164         CALL PRINT_O
+0031   2???           00165         CALL PRINT_R
+0032   2???           00166         CALL PRINT_Y
+                      00167         
+0033   300A           00168         MOVLW b'00001010' ; Move the cursor to 0x0C (Column 10)
+0034   0092           00169         MOVWF CURSOR_POS
+                      00170         
+0035   2???           00171         CALL PRINT_G
+0036   2???           00172         CALL PRINT_A
+0037   2???           00173         CALL PRINT_M
+0038   2???           00174         CALL PRINT_E
+                      00175         
+0039   3000           00176         MOVLW b'00000000' ; "move the cursor to 0x00"
+003A   0092           00177         MOVWF CURSOR_POS
+                      00178         
+003B   2???           00179         CALL DELAYS
+                      00180         ;CALL   DELAY3S ;DONT FORGET TO UNCOMMENT WHEN NOT DEBUGGING !!!
+                      00181 
+003C   2???           00182 MAIN_MENU   CALL    CLEAR_SCREEN
+003D   0194           00183         CLRF    FLAG_REG
+003E   2???           00184         CALL PRINT_M
+003F   2???           00185         CALL PRINT_O
+0040   2???           00186         CALL PRINT_D
+0041   2???           00187         CALL PRINT_E
                       00188         
-0052   2???           00189         CALL PRINT_2
-                      00190         
-0053   3002           00191         MOVLW d'2'   ; Move the cursor two units to the right
-0054   0792           00192         ADDWF CURSOR_POS, 1
+0042   3003           00189         MOVLW d'3'   ; Move the cursor two units to the right
+0043   0792           00190         ADDWF CURSOR_POS, 1
+                      00191         
+0044   2???           00192         CALL PRINT_1
                       00193         
-0055   2???           00194         CALL PRINT_3
-0056   3007           00195         MOVLW   b'00000111'
-0057   0092           00196         MOVWF   CURSOR_POS
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE  5
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE  5
 LCD
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-                      00197 
-0058   1894           00198 INF BTFSC   FLAG_REG,1
-0059   2???           00199     GOTO  MODE2_OR_3
-005A   2???           00200     GOTO  MODE1_OR_INF
-                      00201 
-005B   1814           00202 MODE2_OR_3 BTFSC    FLAG_REG,0
-005C   2???           00203     GOTO  MODE3
-005D   2???           00204     GOTO  MODE2
-                      00205 
-005E   1814           00206 MODE1_OR_INF BTFSC  FLAG_REG,0
-005F   2???           00207     GOTO  MODE1
-0060   2???           00208     GOTO  INF
+0045   3002           00194         MOVLW d'2'   ; Move the cursor two units to the right
+0046   0792           00195         ADDWF CURSOR_POS, 1
+                      00196         
+0047   2???           00197         CALL PRINT_2
+                      00198         
+0048   3002           00199         MOVLW d'2'   ; Move the cursor two units to the right
+0049   0792           00200         ADDWF CURSOR_POS, 1
+                      00201         
+004A   2???           00202         CALL PRINT_3
+004B   3006           00203         MOVLW   b'00000110'
+004C   0092           00204         MOVWF   CURSOR_POS
+004D   2???           00205         CALL PRINT_ASTERISK
+                      00206 
+004E   3088           00207         MOVLW   b'10001000' ; Properly setup the interrupts. Only GIE and RBIE should be set.
+004F   008B           00208         MOVWF   INTCON
                       00209 
-                      00210 
-0061   2???           00211 MODE1 CALL  SETUP
-0062   2???           00212         CALL    MODE1_SCOREBOARD
-0063   2???           00213 LOOP_M1 GOTO    LOOP_M1
-                      00214 
-                      00215 
-0064   2???           00216 MODE2 CALL  SETUP
-Warning[203]: Found opcode in column 1. (CALL)
-0065   2???           00217 CALL    MODE1_SCOREBOARD
-0066   2???           00218 LOOP_M2 GOTO    LOOP_M2
-                      00219 
-                      00220 
-0067   2???           00221 MODE3 CALL  SETUP
-Warning[203]: Found opcode in column 1. (CALL)
-0068   2???           00222 CALL    MODE1_SCOREBOARD
-0069   2???           00223 LOOP_M3 GOTO    LOOP_M3
-                      00224 
-006A                  00225 SETUP
-006A   138B           00226         BCF     INTCON, 7
-                      00227         
-006B   2???           00228         CALL    CLEAR_SCREEN    
-006C   2???           00229         CALL    POPULATE_TABLE
-006D   2???           00230     CALL        HIDE_TABLE
-                      00231 
-006E   3000           00232         MOVLW   b'00000000'
-006F   0092           00233         MOVWF   CURSOR_POS
-0070   2???           00234         CALL    MOVE_CURSOR
-0071   2???           00235         CALL    SHOW_CURSOR
-0072   178B           00236         BSF INTCON, 7
-                      00237         
-0073   0008           00238         RETURN
-                      00239         
-0074   3043           00240 POPULATE_TABLE MOVLW    LTR_C
-0075   00B4           00241     MOVWF  CELL_11
-0076   3041           00242     MOVLW  LTR_A
-0077   00B5           00243     MOVWF  CELL_12
-0078   3045           00244     MOVLW  LTR_E
-0079   00B6           00245     MOVWF  CELL_13
-007A   3046           00246     MOVLW  LTR_F
-007B   00B7           00247     MOVWF  CELL_14
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE  6
+0050   1894           00210 INF BTFSC   FLAG_REG,1
+0051   2???           00211     GOTO  MODE2_OR_3
+0052   2???           00212     GOTO  MODE1_OR_INF
+                      00213 
+0053   1814           00214 MODE2_OR_3 BTFSC    FLAG_REG,0
+0054   2???           00215     GOTO  MODE3
+0055   2???           00216     GOTO  MODE2
+                      00217 
+0056   1814           00218 MODE1_OR_INF BTFSC  FLAG_REG,0
+0057   2???           00219     GOTO  MODE1
+0058   2???           00220     GOTO  INF
+                      00221 
+0059   2???           00222 MODE1   CALL  SETUP
+005A   2???           00223         CALL    MODE1_SCOREBOARD
+005B   2???           00224         CALL    RESET_CURSOR
+                      00225         
+005C   1D94           00226 LOOP_M1 BTFSS   FLAG_REG, 3     ; Check if the game is over (pin 3 on the FLAG_REG is set)
+005D   2???           00227         GOTO    LOOP_M1
+005E   138B           00228         BCF INTCON, 7   ; Disable all interrupts
+005F   3019           00229         MOVLW   b'00011001'
+0060   0092           00230         MOVWF   CURSOR_POS
+0061   1A94           00231         BTFSC   FLAG_REG, 5     ;  Check if the WEAK flag is raised
+0062   2???           00232         GOTO    MODE1_WEAK
+0063   1A14           00233         BTFSC   FLAG_REG, 4     ;  Check if the AVG flag is raised
+0064   2???           00234         GOTO    MODE1_AVG
+0065   2???           00235         GOTO    MODE1_SUPER     ;  Default Case the player should be shown SUPER
+                      00236         
+0066   2???           00237 MODE1_WEAK  CALL    PRINT_W
+0067   2???           00238         CALL    PRINT_E
+0068   2???           00239         CALL    PRINT_A
+0069   2???           00240         CALL    PRINT_K
+006A   1506           00241         BSF     PORTB, 2
+006B   2???           00242         CALL    DELAY3S
+006C   2???           00243         CALL    DELAY3S
+006D   2???           00244         GOTO    MAIN_MENU
+                      00245 
+006E   2???           00246 MODE1_AVG CALL    PRINT_A
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE  6
 LCD
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-007C   3042           00248     MOVLW  LTR_B
-007D   00B8           00249     MOVWF  CELL_15
-007E   3044           00250     MOVLW  LTR_D
-007F   00B9           00251     MOVWF  CELL_16
-0080   3042           00252     MOVLW  LTR_B
-0081   00BA           00253     MOVWF  CELL_21
-0082   3044           00254     MOVLW  LTR_D
-0083   00BB           00255     MOVWF  CELL_22
-0084   3046           00256     MOVLW  LTR_F
-0085   00BC           00257     MOVWF  CELL_23
-0086   3043           00258     MOVLW  LTR_C
-0087   00BD           00259     MOVWF  CELL_24
-0088   3041           00260     MOVLW  LTR_A
-0089   00BE           00261     MOVWF  CELL_25
-008A   3045           00262     MOVLW  LTR_E
-008B   00BF           00263     MOVWF  CELL_26
-008C   0008           00264     RETURN 
-                      00265 
-                      00266 
-008D   3000           00267 HIDE_TABLE MOVLW    b'00000000' ; Move the cursor to 0x00
-008E   0092           00268     MOVWF  CURSOR_POS
-                      00269 
-008F   2???           00270     CALL  PRINT_BOX
-0090   2???           00271     CALL  PRINT_BOX
-0091   2???           00272     CALL  PRINT_BOX
-0092   2???           00273     CALL  PRINT_BOX
-0093   2???           00274     CALL  PRINT_BOX
-0094   2???           00275     CALL  PRINT_BOX
+006F   2???           00247         CALL    PRINT_V
+0070   2???           00248         CALL    PRINT_G
+0071   1586           00249         BSF     PORTB, 3
+0072   2???           00250         CALL    DELAY3S
+0073   2???           00251         CALL    DELAY3S
+0074   2???           00252         GOTO    MAIN_MENU
+                      00253         
+0075   2???           00254 MODE1_SUPER     CALL    PRINT_S
+0076   2???           00255         CALL    PRINT_U
+0077   2???           00256         CALL    PRINT_P
+0078   2???           00257         CALL    PRINT_E
+0079   2???           00258         CALL    PRINT_R
+007A   3003           00259         MOVLW   d'3'
+007B   008C           00260         MOVWF   COUNT1
+007C                  00261 HALT_MODE1_WIN  
+007C   1586           00262         BSF     PORTB, 3
+007D   1106           00263         BCF     PORTB, 2
+007E   2???           00264         CALL    DELAYS
+007F   1506           00265         BSF     PORTB, 2
+0080   1186           00266         BCF     PORTB, 3
+0081   2???           00267         CALL    DELAYS
+Message[305]: Using default destination of 1 (file).
+0082   0B8C           00268         DECFSZ  COUNT1
+0083   2???           00269         GOTO    HALT_MODE1_WIN
+0084   2???           00270         GOTO    MAIN_MENU
+                      00271          
+                      00272 
+0085   2???           00273 MODE2 CALL  SETUP
+0086   2???           00274 LOOP_M2 GOTO    LOOP_M2
+                      00275 
                       00276 
-0095   3010           00277     MOVLW  b'00010000' ; Move cursor to 0x40
-0096   0092           00278     MOVWF  CURSOR_POS
+0087   2???           00277 MODE3 CALL  SETUP
+0088   2???           00278 LOOP_M3 GOTO    LOOP_M3
                       00279 
-0097   2???           00280     CALL  PRINT_BOX
-0098   2???           00281     CALL  PRINT_BOX
-0099   2???           00282     CALL  PRINT_BOX
-009A   2???           00283     CALL  PRINT_BOX
-009B   2???           00284     CALL  PRINT_BOX
-009C   2???           00285     CALL  PRINT_BOX
-009D   0008           00286     RETURN
-                      00287         
-009E   3008           00288 MODE1_SCOREBOARD        MOVLW   b'00001000'
-009F   0092           00289         MOVWF   CURSOR_POS
-00A0   2???           00290         CALL    PRINT_S
-00A1   2???           00291         CALL    PRINT_SEPARATOR
-00A2   2???           00292         CALL    PRINT_SEPARATOR
-00A3   2???           00293         CALL    PRINT_SEPARATOR
-00A4   2???           00294         CALL    PRINT_SEPARATOR
-00A5   2???           00295         CALL    PRINT_SEPARATOR
-00A6   2???           00296         CALL    PRINT_W
-00A7   0008           00297         RETURN
-                      00298 
-                      00299 
-                      00300 
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE  7
+0089                  00280 SETUP
+0089   138B           00281         BCF     INTCON, 7
+                      00282         
+008A   2???           00283         CALL    CLEAR_SCREEN
+008B   2???           00284         CALL    POPULATE_TABLE
+008C   2???           00285         CALL    HIDE_TABLE
+                      00286         
+008D   3006           00287         MOVLW   6
+008E   00B5           00288         MOVWF   NUM_LEFT ; There are initially 6 pairs to find.
+                      00289         
+008F   0008           00290         RETURN
+                      00291         
+0090   3002           00292 POPULATE_TABLE MOVLW    2       ; Encoded Letter C
+0091   00AA           00293     MOVWF  CELL_11
+0092   3000           00294     MOVLW  0    ; Encoded Letter A
+0093   00AB           00295     MOVWF  CELL_12
+0094   3004           00296     MOVLW  4    ; Encoded Letter E
+0095   00AC           00297     MOVWF  CELL_13
+0096   3005           00298     MOVLW  5    ; Encoded Letter F
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE  7
 LCD
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-                      00301 ; ****************************************************************          LCD INTERFACING         ****
-                            *******************************************************************
-                      00302 
-                      00303 ; CLEAR_SCREEN: Erases all characters on the screen and sets the cursor back to row 0, col 0
-00A8   3000           00304 CLEAR_SCREEN    MOVLW   b'00000'    ; Send to the LCD "00 0000 0001", which is the instruction to clear 
-                            the display.
-00A9   0085           00305         MOVWF   PORTA
-00AA   2???           00306         CALL ET
-                      00307         
-00AB   3001           00308         MOVLW   b'00001'
-00AC   0085           00309         MOVWF   PORTA
-00AD   2???           00310         CALL ET
-                      00311         
-00AE   0008           00312         RETURN
-                      00313         
-                      00314 ; ET: Writes data to LCD.
-00AF   1486           00315 ET      BSF     PORTB,1
-00B0   0000           00316         NOP
-00B1   1086           00317         BCF     PORTB,1
-00B2   2???           00318         CALL DELAYFMS
-00B3   0008           00319         RETURN 
-                      00320 
-00B4   1A12           00321 MOVE_CURSOR     BTFSC   CURSOR_POS,4    ; If line (encoded as bit 4) is not 0, i.e. line is 1 then speci
-                            fy the first bit in the address as a 4.
-00B5   300C           00322         MOVLW   b'01100'
-00B6   1E12           00323         BTFSS   CURSOR_POS,4            ; If line (encoded as bit 4) is not 1, i.e. line is 0 then speci
-                            fy the first bit in the address as a 0.
-00B7   3008           00324         MOVLW   b'01000'
-00B8   0085           00325         MOVWF   PORTA
-00B9   2???           00326         CALL ET
-                      00327         
-00BA   0812           00328         MOVF    CURSOR_POS,0
-00BB   390F           00329         ANDLW   h'0f'       ; Mask the first 4 bits (which correspond to the column number)
-00BC   0085           00330         MOVWF   PORTA
-00BD   2???           00331         CALL ET
-00BE   0008           00332         RETURN
-                      00333 
-                      00334 ;   WRITE_CHAR: Automatically writes a character at address specified in CURSOR_POS and increments CURSO
-                            R_POS in anticipation of the next character
-                      00335 
-                      00336 
-00BF   0093           00337 WRITE_CHAR      MOVWF   CHAR_CODE   ; In order to save lines, the W register is initially assumed to con
-                            tain the character code. Load it into CHAR_CODE register.
-00C0   2???           00338         CALL    MOVE_CURSOR
+0097   00AD           00299     MOVWF  CELL_14
+0098   3001           00300     MOVLW  1    ; Encoded Letter B
+0099   00AE           00301     MOVWF  CELL_15
+009A   3003           00302     MOVLW  3    ; Encoded Letter D
+009B   00AF           00303     MOVWF  CELL_16
+009C   3001           00304     MOVLW  1    ; Encoded Letter B
+009D   00BA           00305     MOVWF  CELL_21
+009E   3003           00306     MOVLW  3    ; Encoded Letter D
+009F   00BB           00307     MOVWF  CELL_22
+00A0   3005           00308     MOVLW  5    ; Encoded Letter F
+00A1   00BC           00309     MOVWF  CELL_23
+00A2   3002           00310     MOVLW  2    ; Encoded Letter C
+00A3   00BD           00311     MOVWF  CELL_24
+00A4   3000           00312     MOVLW  0    ; Encoded Letter A
+00A5   00BE           00313     MOVWF  CELL_25
+00A6   3004           00314     MOVLW  4    ; Encoded Letter E
+00A7   00BF           00315     MOVWF  CELL_26
+00A8   0008           00316     RETURN 
+                      00317 
+                      00318 
+00A9   3000           00319 HIDE_TABLE MOVLW    b'00000000' ; Move the cursor to 0x00
+00AA   0092           00320     MOVWF  CURSOR_POS
+                      00321 
+00AB   2???           00322     CALL  PRINT_BOX
+00AC   2???           00323     CALL  PRINT_BOX
+00AD   2???           00324     CALL  PRINT_BOX
+00AE   2???           00325     CALL  PRINT_BOX
+00AF   2???           00326     CALL  PRINT_BOX
+00B0   2???           00327     CALL  PRINT_BOX
+                      00328 
+00B1   3010           00329     MOVLW  b'00010000' ; Move cursor to 0x40
+00B2   0092           00330     MOVWF  CURSOR_POS
+                      00331 
+00B3   2???           00332     CALL  PRINT_BOX
+00B4   2???           00333     CALL  PRINT_BOX
+00B5   2???           00334     CALL  PRINT_BOX
+00B6   2???           00335     CALL  PRINT_BOX
+00B7   2???           00336     CALL  PRINT_BOX
+00B8   2???           00337     CALL  PRINT_BOX
+00B9   0008           00338     RETURN
                       00339         
-                      00340         ;   Handling character code: A character code is an 8-bit number representing a printable charac
-                            ter. To print it to the screen, we should mask the upper four
-                      00341         ;   bits, shift left 4 times, set the first bit to 1 and write to the LCD. Then, mask the lower 
-                            four bits, set the first bit to 1 and write to the LCD.
-                      00342         
-00C1   0E13           00343         SWAPF   CHAR_CODE, 0 ; Move contents of CHAR_CODE to W, swapping the nibbles.
-00C2   390F           00344         ANDLW   h'0f'        ; Mask the first 4 bits (which are now in the lower bits after swapping)
-00C3   3E10           00345         ADDLW   h'10'        ; Set the first bit of the W reg (adding 16)
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE  8
+00BA   3008           00340 MODE1_SCOREBOARD        MOVLW   b'00001000'
+00BB   0092           00341     MOVWF       CURSOR_POS
+00BC   2???           00342     CALL        PRINT_S
+00BD   2???           00343     CALL        PRINT_SEPARATOR
+00BE   2???           00344     CALL        PRINT_SEPARATOR
+00BF   2???           00345     CALL        PRINT_SEPARATOR
+00C0   2???           00346     CALL        PRINT_SEPARATOR
+00C1   2???           00347     CALL        PRINT_SEPARATOR
+00C2   2???           00348     CALL        PRINT_W
+00C3   01B2           00349     CLRF        WEAKNESS
+                      00350 
+00C4   178B           00351     BSF INTCON, 7
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE  8
 LCD
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-                      00346         
-00C4   0085           00347         MOVWF   PORTA
-00C5   2???           00348         CALL ET
-                      00349         
-00C6   0813           00350         MOVF    CHAR_CODE, 0 ; Move contents of CHAR_CODE register to W register
-00C7   390F           00351         ANDLW   h'0f'        ; Mask the last 4 bits
-00C8   3E10           00352         ADDLW   h'10'        ; Set the first bit of the W reg (adding 16)
-                      00353         
-00C9   0085           00354         MOVWF   PORTA
-00CA   2???           00355         CALL ET
-00CB   0A92           00356         INCF    CURSOR_POS,1    ; Increment the column number, equivalent to moving the cursor to await 
-                            the next character.
-00CC   0008           00357         RETURN
-                      00358         
-                      00359 
-00CD                  00360 SHOW_CURSOR
-00CD   3000           00361         MOVLW   b'00000'
-00CE   0085           00362         MOVWF   PORTA
-00CF   2???           00363         CALL    ET
-00D0   3000           00364         MOVLW   b'00000'
-00D1   0085           00365         MOVWF   PORTA
-                      00366 
-00D2   300E           00367         MOVLW   b'01110'
-00D3   0085           00368         MOVWF   PORTA
-00D4   2???           00369         CALL    ET
-00D5   3000           00370         MOVLW   b'00000'
-00D6   0085           00371         MOVWF   PORTA
-00D7   0008           00372         RETURN
-                      00373 
-                      00374 ; One-liners to print specific characters (feel free to abuse)
+00C5   0008           00352     RETURN
+                      00353 
+                      00354 
+                      00355 ; ****************************************************************          LCD INTERFACING         ****
+                            *******************************************************************
+                      00356 
+                      00357 ; ET: Writes data to LCD.
+00C6   1486           00358 ET      BSF     PORTB,1
+00C7   0000           00359         NOP
+00C8   1086           00360         BCF     PORTB,1
+00C9   2???           00361         CALL DELAYFMS
+00CA   0008           00362         RETURN
+                      00363         
+                      00364 ; CLEAR_SCREEN: Erases all characters on the screen and sets the cursor back to row 0, col 0
+00CB   3000           00365 CLEAR_SCREEN    MOVLW   b'00000'    ; Send to the LCD "00 0000 0001", which is the instruction to clear 
+                            the display.
+00CC   0085           00366         MOVWF   PORTA
+00CD   2???           00367         CALL ET
+                      00368         
+00CE   3001           00369         MOVLW   b'00001'
+00CF   0085           00370         MOVWF   PORTA
+00D0   2???           00371         CALL ET
+                      00372         
+00D1   0008           00373         RETURN
+                      00374         
                       00375         
-00D8   3041           00376 PRINT_A MOVLW   LTR_A
-00D9   2???           00377         CALL WRITE_CHAR
-00DA   0008           00378         RETURN
-                      00379         
-00DB   3044           00380 PRINT_D MOVLW   LTR_D
-00DC   2???           00381         CALL WRITE_CHAR
-00DD   0008           00382         RETURN
-                      00383         
-00DE   3045           00384 PRINT_E MOVLW   LTR_E
-00DF   2???           00385         CALL WRITE_CHAR
-00E0   0008           00386         RETURN
-                      00387 
-00E1   3047           00388 PRINT_G MOVLW   LTR_G
-00E2   2???           00389         CALL WRITE_CHAR
-00E3   0008           00390         RETURN
+                      00376 ; DELETE_BEFORE: Deletes the character right before the cursor and decrements the cursor position
+Message[305]: Using default destination of 1 (file).
+00D2   0392           00377 DELETE_BEFORE   DECF    CURSOR_POS
+00D3   30A0           00378         MOVLW   LTR_SPACE        ; "print space in order to erase the char"
+00D4   2???           00379         CALL WRITE_CHAR
+00D5   0008           00380         RETURN 
+                      00381 
+                      00382 
+                      00383 ;   WRITE_CHAR: Automatically writes a character at address specified in CURSOR_POS and increments CURSO
+                            R_POS in anticipation of the next character
+00D6   0093           00384 WRITE_CHAR      MOVWF   CHAR_CODE   ; In order to save lines, the W register is initially assumed to con
+                            tain the character code. Load it into CHAR_CODE register.
+00D7   1A12           00385         BTFSC   CURSOR_POS,4    ; If line (encoded as bit 4) is not 0, i.e. line is 1 then specify the f
+                            irst bit in the address as a 4.
+00D8   300C           00386         MOVLW   b'01100'
+00D9   1E12           00387         BTFSS   CURSOR_POS,4            ; If line (encoded as bit 4) is not 1, i.e. line is 0 then speci
+                            fy the first bit in the address as a 0.
+00DA   3008           00388         MOVLW   b'01000'
+00DB   0085           00389         MOVWF   PORTA
+00DC   2???           00390         CALL ET
                       00391         
-00E4   304D           00392 PRINT_M MOVLW   LTR_M
-00E5   2???           00393         CALL WRITE_CHAR
-00E6   0008           00394         RETURN
-                      00395 
-00E7   304F           00396 PRINT_O MOVLW   LTR_O
-00E8   2???           00397         CALL WRITE_CHAR
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE  9
+00DD   0812           00392         MOVF    CURSOR_POS,0
+00DE   390F           00393         ANDLW   h'0f'       ; Mask the first 4 bits (which correspond to the column number)
+00DF   0085           00394         MOVWF   PORTA
+00E0   2???           00395         CALL ET
+                      00396         
+                      00397         ;   Handling character code: A character code is an 8-bit number representing a printable charac
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE  9
 LCD
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-00E9   0008           00398         RETURN
-                      00399 
-00EA   3052           00400 PRINT_R MOVLW   LTR_R
-00EB   2???           00401         CALL WRITE_CHAR
-00EC   0008           00402         RETURN
-                      00403 
-00ED   3053           00404 PRINT_S MOVLW   LTR_S
-00EE   2???           00405         CALL WRITE_CHAR
-00EF   0008           00406         RETURN
-                      00407 
-00F0   3057           00408 PRINT_W MOVLW   LTR_W
-00F1   2???           00409         CALL WRITE_CHAR
-00F2   0008           00410         RETURN
-                      00411 
-00F3   3059           00412 PRINT_Y MOVLW   LTR_Y
-00F4   2???           00413         CALL WRITE_CHAR
-00F5   0008           00414         RETURN
-                      00415         
-00F6   302A           00416 PRINT_ASTERISK  MOVLW   LTR_ASTERISK
-00F7   2???           00417         CALL WRITE_CHAR
-00F8   0008           00418         RETURN
-                      00419                                          
-00F9   30A0           00420 PRINT_SPACE     MOVLW   LTR_SPACE        ; "print space in order to erase the char"
-00FA   2???           00421         CALL WRITE_CHAR
-00FB   0008           00422         RETURN
-                      00423         
-00FC   30DB           00424 PRINT_BOX MOVLW LTR_BOX
-00FD   2???           00425     CALL  WRITE_CHAR
-00FE   0008           00426     RETURN
-                      00427 
-00FF   30A3           00428 PRINT_SEPARATOR MOVLW   LTR_SEPARATOR
-0100   2???           00429     CALL  WRITE_CHAR
-0101   0008           00430     RETURN
+                            ter. To print it to the screen, we should mask the upper four
+                      00398         ;   bits, shift left 4 times, set the first bit to 1 and write to the LCD. Then, mask the lower 
+                            four bits, set the first bit to 1 and write to the LCD.
+                      00399         
+00E1   0E13           00400         SWAPF   CHAR_CODE, 0 ; Move contents of CHAR_CODE to W, swapping the nibbles.
+00E2   390F           00401         ANDLW   h'0f'        ; Mask the first 4 bits (which are now in the lower bits after swapping)
+00E3   3E10           00402         ADDLW   h'10'        ; Set the first bit of the W reg (adding 16)
+                      00403         
+00E4   0085           00404         MOVWF   PORTA
+00E5   2???           00405         CALL ET
+                      00406         
+00E6   0813           00407         MOVF    CHAR_CODE, 0 ; Move contents of CHAR_CODE register to W register
+00E7   390F           00408         ANDLW   h'0f'        ; Mask the last 4 bits
+00E8   3E10           00409         ADDLW   h'10'        ; Set the first bit of the W reg (adding 16)
+                      00410         
+00E9   0085           00411         MOVWF   PORTA
+00EA   2???           00412         CALL ET
+00EB   0A92           00413         INCF    CURSOR_POS,1    ; Increment the column number, equivalent to moving the cursor to await 
+                            the next character.
+00EC   0008           00414         RETURN
+                      00415 
+                      00416 
+                      00417 ; SHOW_CURSOR:  Forces the LCD to display a dashed line denoting the position of the cursor.
+00ED                  00418 SHOW_CURSOR
+00ED   3000           00419         MOVLW   b'00000'
+00EE   0085           00420         MOVWF   PORTA
+00EF   2???           00421         CALL    ET
+00F0   3000           00422         MOVLW   b'00000'
+00F1   0085           00423         MOVWF   PORTA
+                      00424 
+00F2   300E           00425         MOVLW   b'01110'
+00F3   0085           00426         MOVWF   PORTA
+00F4   2???           00427         CALL    ET
+00F5   3000           00428         MOVLW   b'00000'
+00F6   0085           00429         MOVWF   PORTA
+00F7   0008           00430         RETURN
                       00431         
-0102   3031           00432 PRINT_1 MOVLW   LTR_1
-0103   2???           00433         CALL WRITE_CHAR
-0104   0008           00434         RETURN
-                      00435 
-0105   3032           00436 PRINT_2 MOVLW   LTR_2
-0106   2???           00437         CALL WRITE_CHAR
-0107   0008           00438         RETURN
+                      00432 ; MOVE_CURSOR: Forces the cursor on the LCD to move without printing anything, CURSOR_POS must be set ri
+                            ght before calling this function
+00F8   1A12           00433 MOVE_CURSOR     BTFSC   CURSOR_POS,4    ; If line (encoded as bit 4) is not 0, i.e. line is 1 then speci
+                            fy the first bit in the address as a 4.
+00F9   300C           00434         MOVLW   b'01100'
+00FA   1E12           00435         BTFSS   CURSOR_POS,4            ; If line (encoded as bit 4) is not 1, i.e. line is 0 then speci
+                            fy the first bit in the address as a 0.
+00FB   3008           00436         MOVLW   b'01000'
+00FC   0085           00437         MOVWF   PORTA
+00FD   2???           00438         CALL ET
                       00439         
-0108   3033           00440 PRINT_3 MOVLW   LTR_3
-0109   2???           00441         CALL WRITE_CHAR
-010A   0008           00442         RETURN
-                      00443         
-                      00444 ; ***********************************************************************   INTERRUPTS      ************
-                            **********************************************************
-                      00445         
-                      00446 ; NOTE: Should all of these be BTFSS?
-                      00447         
-010B   2???           00448 RB4_INT CALL    DELAYFMS ;  Debounce
-010C   1E06           00449         BTFSS   PORTB,LEFT_BTN
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE 10
+00FE   0812           00440         MOVF    CURSOR_POS,0
+00FF   390F           00441         ANDLW   h'0f'       ; Mask the first 4 bits (which correspond to the column number)
+0100   0085           00442         MOVWF   PORTA
+0101   2???           00443         CALL ET
+0102   0008           00444         RETURN
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE 10
 LCD
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-010D   2???           00450         CALL    HANDLE_LEFT
-                      00451         
-010E   1E86           00452         BTFSS   PORTB,RIGHT_BTN
-010F   2???           00453         CALL    HANDLE_RIGHT
+                      00445 
+                      00446 ; RESET_CURSOR: Resets the position of the cursor to row 0, col 0 both on the LCD and in CURSOR_POS
+0103   3000           00447 RESET_CURSOR    MOVLW   0
+0104   0092           00448         MOVWF   CURSOR_POS
+0105   2???           00449         CALL    MOVE_CURSOR
+0106   2???           00450         CALL    SHOW_CURSOR
+0107   0008           00451         RETURN
+                      00452         
+                      00453 ; One-liners to print specific characters (feel free to abuse)
                       00454         
-0110   1F06           00455         BTFSS   PORTB,UP_DOWN_BTN
-0111   2???           00456         CALL    HANDLE_UP_DOWN
-                      00457         
-0112   1F86           00458         BTFSS   PORTB,CONFIRM_BTN
-0113   2???           00459         CALL    HANDLE_CONFIRM
-                      00460         
-0114   100B           00461         BCF INTCON, 0
-0115   0009           00462         RETFIE
-                      00463 
-0116   3000           00464 HANDLE_LEFT     MOVLW   b'00000000'
-0117   0614           00465         XORWF   FLAG_REG, 0     ; Check if you are in the Main Menu (i.e. Check if the last 2 bits of th
-                            e FLAG_REG are 0s)
-0118   1903           00466         BTFSC   STATUS, 2
-0119   0008           00467         RETURN;GOTO     MOVE_AST_LEFT
-011A   2???           00468         GOTO    IN_GAME_LEFT
-                      00469 
-011B   300F           00470 IN_GAME_LEFT    MOVLW   b'00001111'     ; Check if you are at column 0, if you are then buzz
-011C   0512           00471         ANDWF   CURSOR_POS, 0   ; Mask only the last 4 bits (corresponding to col number)
-011D   0095           00472         MOVWF   TMP                     ; Store it in a tmp register
-011E   3000           00473         MOVLW   0                       ; Load the number zero in W
-011F   0615           00474         XORWF   TMP, 0          ; Check if col number == 0
-0120   1903           00475         BTFSC   STATUS, 2       ; If it's true, Buzz, otherwise, decrement the cursor position
-0121   2???           00476         GOTO    BUZZ
-Message[305]: Using default destination of 1 (file).
-0122   0392           00477         DECF    CURSOR_POS
-0123   2???           00478         CALL    MOVE_CURSOR
-0124   2???           00479         CALL    SHOW_CURSOR
-0125   0008           00480         RETURN
-                      00481 
-0126   3000           00482 HANDLE_RIGHT    MOVLW   b'00000000'
-0127   0614           00483         XORWF   FLAG_REG, 0     ; Check if you are in the Main Menu (i.e. Check if the last 2 bits of th
-                            e FLAG_REG are 0s)
-0128   1903           00484         BTFSC   STATUS, 2
-0129   2???           00485         GOTO    MOVE_AST_RIGHT
-012A   2???           00486         GOTO    IN_GAME_RIGHT
-                      00487 
-012B   300F           00488 IN_GAME_RIGHT   MOVLW   b'00001111'     ; Check if you are at column 7, if you are then buzz
-012C   0512           00489         ANDWF   CURSOR_POS, 0   ; Mask only the last 4 bits (corresponding to col number)
-012D   0095           00490         MOVWF   TMP
-012E   3005           00491         MOVLW   d'5'
-012F   0615           00492         XORWF   TMP, 0
-0130   1903           00493         BTFSC   STATUS, 2
-0131   2???           00494         GOTO    BUZZ
-Message[305]: Using default destination of 1 (file).
-0132   0A92           00495         INCF    CURSOR_POS
-0133   2???           00496         CALL    MOVE_CURSOR
-0134   2???           00497         CALL    SHOW_CURSOR
-0135   0008           00498         RETURN
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE 11
+0108   3041           00455 PRINT_A MOVLW   LTR_A
+0109   2???           00456         CALL WRITE_CHAR
+010A   0008           00457         RETURN
+                      00458         
+010B   3044           00459 PRINT_D MOVLW   LTR_D
+010C   2???           00460         CALL WRITE_CHAR
+010D   0008           00461         RETURN
+                      00462         
+010E   3045           00463 PRINT_E MOVLW   LTR_E
+010F   2???           00464         CALL WRITE_CHAR
+0110   0008           00465         RETURN
+                      00466 
+0111   3047           00467 PRINT_G MOVLW   LTR_G
+0112   2???           00468         CALL WRITE_CHAR
+0113   0008           00469         RETURN
+                      00470         
+0114   304B           00471 PRINT_K MOVLW   LTR_K
+0115   2???           00472         CALL WRITE_CHAR
+0116   0008           00473         RETURN
+                      00474         
+0117   304D           00475 PRINT_M MOVLW   LTR_M
+0118   2???           00476         CALL WRITE_CHAR
+0119   0008           00477         RETURN
+                      00478 
+011A   304F           00479 PRINT_O MOVLW   LTR_O
+011B   2???           00480         CALL WRITE_CHAR
+011C   0008           00481         RETURN
+                      00482 
+011D   3050           00483 PRINT_P MOVLW   LTR_P
+011E   2???           00484         CALL WRITE_CHAR
+011F   0008           00485         RETURN
+                      00486 
+0120   3052           00487 PRINT_R MOVLW   LTR_R
+0121   2???           00488         CALL WRITE_CHAR
+0122   0008           00489         RETURN
+                      00490 
+0123   3053           00491 PRINT_S MOVLW   LTR_S
+0124   2???           00492         CALL WRITE_CHAR
+0125   0008           00493         RETURN
+                      00494 
+0126   3055           00495 PRINT_U MOVLW   LTR_U
+0127   2???           00496         CALL WRITE_CHAR
+0128   0008           00497         RETURN
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE 11
 LCD
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-                      00499 
-                      00500 
-0136                  00501 HANDLE_CONFIRM  ; Unless you're in the Main Menu, toggle the value of the CONFIRM_STATUS flag (Bit 2 on 
-                            FLAG_REG) and reveal the character underneath, otherwise go into desired mode.
-0136   3000           00502         MOVLW   b'00000000'
-0137   0614           00503         XORWF   FLAG_REG, 0     ; Check if you are in the Main Menu (i.e. Check if the last 2 bits of th
-                            e FLAG_REG are 0s)
-0138   1903           00504         BTFSC   STATUS, 2
-0139   2???           00505         GOTO    MAIN_MENU_CONFIRMATION
-013A   3010           00506         MOVLW   b'00010000'
-013B   0008           00507         RETURN  ; TODO: Implement Card opening functionality
-                      00508 
-                      00509 
-013C   3007           00510 MAIN_MENU_CONFIRMATION  MOVLW   b'00000111'; Check if the Mode selected is Mode 1(i.e. cursor is at pos 
-                            6)
-013D   0612           00511         XORWF   CURSOR_POS, 0
-013E   1903           00512         BTFSC   STATUS, 2
-013F   2???           00513         GOTO    SKIP_MODE1_CONFIRMATION
-0140   1414           00514         BSF             FLAG_REG, 0
-0141   0008           00515         RETURN
-0142   300A           00516 SKIP_MODE1_CONFIRMATION MOVLW   b'00001010'; Check if the Mode selected is Mode 2(i.e. cursor is at pos 
-                            9)
-0143   0612           00517         XORWF   CURSOR_POS, 0
-0144   1903           00518         BTFSC   STATUS, 2
-0145   2???           00519         GOTO    SKIP_MODE2_CONFIRMATION
-0146   1494           00520         BSF             FLAG_REG, 1
-0147   0008           00521         RETURN
-0148   1414           00522 SKIP_MODE2_CONFIRMATION BSF     FLAG_REG, 0     ; Otherwise, Mode is 3 select so set the first two bits 
-                            of the FLAG_REG
-0149   1494           00523         BSF             FLAG_REG, 1
-014A   0008           00524         RETURN
-                      00525 
+                      00498         
+0129   3056           00499 PRINT_V MOVLW   LTR_V
+012A   2???           00500         CALL WRITE_CHAR
+012B   0008           00501         RETURN
+                      00502         
+012C   3057           00503 PRINT_W MOVLW   LTR_W
+012D   2???           00504         CALL WRITE_CHAR
+012E   0008           00505         RETURN
+                      00506 
+012F   3059           00507 PRINT_Y MOVLW   LTR_Y
+0130   2???           00508         CALL WRITE_CHAR
+0131   0008           00509         RETURN
+                      00510         
+0132   302A           00511 PRINT_ASTERISK  MOVLW   LTR_ASTERISK
+0133   2???           00512         CALL WRITE_CHAR
+0134   0008           00513         RETURN
+                      00514                                          
+0135   30A0           00515 PRINT_SPACE     MOVLW   LTR_SPACE        ; "print space in order to erase the char"
+0136   2???           00516         CALL WRITE_CHAR
+0137   0008           00517         RETURN
+                      00518         
+0138   30DB           00519 PRINT_BOX MOVLW LTR_BOX
+0139   2???           00520     CALL  WRITE_CHAR
+013A   0008           00521     RETURN
+                      00522     
+013B   30FF           00523 PRINT_SHADE MOVLW       LTR_SHADE
+013C   2???           00524     CALL  WRITE_CHAR
+013D   0008           00525     RETURN
                       00526 
-014B                  00527 HANDLE_UP_DOWN  ; Unless you're in the Main Menu, toggle the row that the cursor is at
-014B   3000           00528         MOVLW   b'00000000'
-014C   0614           00529         XORWF   FLAG_REG, 0     ; Check if you are in the Main Menu (i.e. Check if the last 2 bits of th
-                            e FLAG_REG are 0s)
-014D   1903           00530         BTFSC   STATUS, 2
-014E   0008           00531         RETURN
-014F   3010           00532         MOVLW   b'00010000'
-0150   0692           00533         XORWF   CURSOR_POS, 1
-0151   2???           00534         CALL    MOVE_CURSOR
-0152   2???           00535         CALL    SHOW_CURSOR
-0153   0008           00536 SKIP_HANDLE_UP_DOWN  RETURN     
-                      00537         
+013E   30A3           00527 PRINT_SEPARATOR MOVLW   LTR_SEPARATOR   ; A separator is the small inverted 'L-shape' in Mode 1
+013F   2???           00528     CALL  WRITE_CHAR
+0140   0008           00529     RETURN
+                      00530         
+0141   3031           00531 PRINT_1 MOVLW   LTR_1
+0142   2???           00532         CALL WRITE_CHAR
+0143   0008           00533         RETURN
+                      00534 
+0144   3032           00535 PRINT_2 MOVLW   LTR_2
+0145   2???           00536         CALL WRITE_CHAR
+0146   0008           00537         RETURN
                       00538         
-                      00539 ; ***********************************************************************       DELAYS      ************
-                            **********************************************************
-                      00540         
-                      00541 ; DELAYS: Causes a 1s delay, uses registers COUNT4, COUNT5 & COUNT6.
+0147   3033           00539 PRINT_3 MOVLW   LTR_3
+0148   2???           00540         CALL WRITE_CHAR
+0149   0008           00541         RETURN
                       00542         
-0154   3000           00543 DELAYS  MOVLW   H'00'
-0155   0091           00544         MOVWF   COUNT6
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE 12
+                      00543 ; ***********************************************************************   INTERRUPTS      ************
+                            **********************************************************
+                      00544         
+                      00545 ; NOTE: Should all of these be BTFSS?
+                      00546         
+014A   2???           00547 RB4_INT CALL    DELAYFMS ;  Debounce
+014B   1E06           00548         BTFSS   PORTB,LEFT_BTN
+014C   2???           00549         CALL    HANDLE_LEFT
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE 12
 LCD
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-0156   0090           00545         MOVWF   COUNT5
-0157   3005           00546         MOVLW   0x5
-0158   008F           00547         MOVWF   COUNT4
-                      00548         
-0159   0F91           00549 LOOP    INCFSZ  COUNT6,F
-015A   2???           00550         GOTO    LOOP
-015B   0F90           00551         INCFSZ  COUNT5,F
-015C   2???           00552         GOTO    LOOP
-015D   0B8F           00553         DECFSZ  COUNT4,F
-015E   2???           00554         GOTO    LOOP
-015F   0008           00555         RETURN
+                      00550         
+014D   1E86           00551         BTFSS   PORTB,RIGHT_BTN
+014E   2???           00552         CALL    HANDLE_RIGHT
+                      00553         
+014F   1F06           00554         BTFSS   PORTB,UP_DOWN_BTN
+0150   2???           00555         CALL    HANDLE_UP_DOWN
                       00556         
-                      00557 ; DELAYS: Causes a 3s delay, uses registers COUNT7, COUNT8 & COUNT9.
-                      00558     
-0160   3000           00559 DELAY3S MOVLW   H'00'
-0161   0098           00560         MOVWF   COUNT9
-0162   0097           00561         MOVWF   COUNT8
-0163   3010           00562         MOVLW   H'10'
-0164   0096           00563         MOVWF   COUNT7
-                      00564         
-0165   0F98           00565 LOOP3S  INCFSZ  COUNT9,F
-0166   2???           00566         GOTO    LOOP3S
-0167   0F97           00567         INCFSZ  COUNT8,F
-0168   2???           00568         GOTO    LOOP3S
-0169   0B96           00569         DECFSZ  COUNT7,F
-016A   2???           00570         GOTO    LOOP3S
-                      00571         
-016B   0008           00572         RETURN
-                      00573         
-                      00574 ; DELAYFMS: Causes a 40 ms delay, uses register COUNT1.
-                      00575         
-016C   3025           00576 DELAYFMS        MOVLW   d'37'
-016D   008C           00577         MOVWF   COUNT1
-016E   2???           00578 LOOP3   CALL    DELAYMS
-016F   0B8C           00579         DECFSZ  COUNT1,F
-0170   2???           00580         GOTO    LOOP3
-0171   0008           00581         RETURN
-                      00582 
-                      00583 ; DELAYMS: Causes a 1 ms delay, uses registers COUNT2 & COUNT 3.
-                      00584         
-0172   3000           00585 DELAYMS MOVLW d'0'          
-0173   008D           00586         MOVWF   COUNT2
-0174   304C           00587         MOVLW   d'76'
-0175   008E           00588         MOVWF   COUNT3
-0176   0F8D           00589 LOOP1   INCFSZ  COUNT2,F
-0177   2???           00590         GOTO    LOOP1
-0178   0000           00591 LOOP2   NOP     
-0179   0B8E           00592         DECFSZ  COUNT3,F
-017A   2???           00593         GOTO LOOP2
-017B   0008           00594         RETURN
-                      00595 
-                      00596 ; ****************************************************     MISC      ***********************************
-                            ***************;
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE 13
+0151   1F86           00557         BTFSS   PORTB,CONFIRM_BTN
+0152   2???           00558         CALL    HANDLE_CONFIRM
+                      00559         
+0153   100B           00560         BCF INTCON, 0
+0154   0009           00561         RETFIE
+                      00562         
+                      00563         
+                      00564 ; **************************************************************************************        BUTTON H
+                            ANDLERS       ****************************************************************************
+                      00565 
+0155   3000           00566 HANDLE_LEFT     MOVLW   b'00000000'
+0156   0614           00567         XORWF   FLAG_REG, 0     ; Check if you are in the Main Menu (i.e. Check if the last 2 bits of th
+                            e FLAG_REG are 0s)
+0157   1903           00568         BTFSC   STATUS, 2
+0158   0008           00569         RETURN;GOTO     MOVE_AST_LEFT
+0159   2???           00570         GOTO    IN_GAME_LEFT
+                      00571 
+015A   300F           00572 IN_GAME_LEFT    MOVLW   b'00001111'     ; Check if you are at column 0, if you are then buzz
+015B   0512           00573         ANDWF   CURSOR_POS, 0   ; Mask only the last 4 bits (corresponding to col number)
+015C   0095           00574         MOVWF   TMP                     ; Store it in a tmp register
+015D   3000           00575         MOVLW   0                       ; Load the number zero in W
+015E   0615           00576         XORWF   TMP, 0          ; Check if col number == 0
+015F   1903           00577         BTFSC   STATUS, 2       ; If it's true, Buzz, otherwise, decrement the cursor position
+0160   2???           00578         GOTO    BUZZ
+Message[305]: Using default destination of 1 (file).
+0161   0392           00579         DECF    CURSOR_POS
+0162   2???           00580         CALL    MOVE_CURSOR
+0163   2???           00581         CALL    SHOW_CURSOR
+0164   0008           00582         RETURN
+                      00583 
+0165   3000           00584 HANDLE_RIGHT    MOVLW   b'00000000'
+0166   0614           00585         XORWF   FLAG_REG, 0     ; Check if you are in the Main Menu (i.e. Check if the last 2 bits of th
+                            e FLAG_REG are 0s)
+0167   1903           00586         BTFSC   STATUS, 2
+0168   2???           00587         GOTO    MOVE_AST_RIGHT
+0169   2???           00588         GOTO    IN_GAME_RIGHT
+                      00589 
+016A   300F           00590 IN_GAME_RIGHT   MOVLW   b'00001111'     ; Check if you are at column 7, if you are then buzz
+016B   0512           00591         ANDWF   CURSOR_POS, 0   ; Mask only the last 4 bits (corresponding to col number)
+016C   0095           00592         MOVWF   TMP
+016D   3005           00593         MOVLW   d'5'
+016E   0615           00594         XORWF   TMP, 0
+016F   1903           00595         BTFSC   STATUS, 2
+0170   2???           00596         GOTO    BUZZ
+Message[305]: Using default destination of 1 (file).
+0171   0A92           00597         INCF    CURSOR_POS
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE 13
 LCD
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-                      00597 
-017C   1406           00598 BUZZ    BSF     PORTB, 0
-017D   2???           00599         CALL    DELAYS
-017E   1006           00600         BCF     PORTB, 0
-017F   0008           00601         RETURN
+0172   2???           00598         CALL    MOVE_CURSOR
+0173   2???           00599         CALL    SHOW_CURSOR
+0174   0008           00600         RETURN
+                      00601 
                       00602 
+0175                  00603 HANDLE_CONFIRM  ; Unless you're in the Main Menu, toggle the value of the CONFIRM_STATUS flag (Bit 2 on 
+                            FLAG_REG) and reveal the character underneath, otherwise go into desired mode.
+0175   3000           00604         MOVLW   b'00000000'
+0176   0614           00605         XORWF   FLAG_REG, 0     ; Check if you are in the Main Menu (i.e. Check if the last 2 bits of th
+                            e FLAG_REG are 0s)
+0177   1903           00606         BTFSC   STATUS, 2
+0178   2???           00607         GOTO    MAIN_MENU_CONFIRMATION
+                      00608         
+0179   302A           00609         MOVLW   d'42'   ; Load Bias
+017A   0712           00610         ADDWF   CURSOR_POS, 0   ; Add Bias
+017B   0084           00611         MOVWF   FSR     ;   Move the register number into FSR
+017C   0800           00612         MOVF    INDF, 0 ; Obtain Contents (which should be an encoded CHAR_CODE + flag)
+                      00613         
+017D   0095           00614         MOVWF   TMP     ; TMP has contents of the selected cell
+017E   1B95           00615         BTFSC   TMP, 7 ; Last bit is used as flag to determine if the card is open.
+017F   2???           00616         GOTO    BUZZ
+0180   1780           00617         BSF     INDF, 7
+                      00618         
+                      00619 ; Reveal the card
+0181   1D14           00620         BTFSS   FLAG_REG, 2 ; Load it into either CARD1 or CARD2 depending on if it's the first or secon
+                            d card opened
+0182   00B0           00621         MOVWF   CARD1
+0183   1914           00622         BTFSC   FLAG_REG, 2
+0184   00B1           00623         MOVWF   CARD2
+0185   0095           00624         MOVWF   TMP             ; Store char_code in temporary reg
+0186   3007           00625         MOVLW   b'00000111'
+0187   0595           00626         ANDWF   TMP, 1
+0188   3041           00627         MOVLW   b'01000001'             ; Add bias equal to 'A'.
+0189   0715           00628         ADDWF   TMP, 0
+018A   2???           00629         CALL    WRITE_CHAR  ;   Write it to the character to the LCD.
 Message[305]: Using default destination of 1 (file).
-0180   0392           00603 DELETE_BEFORE   DECF    CURSOR_POS
-0181   2???           00604         CALL    PRINT_SPACE ; "THE CURSOR NOW IS AFTER THE DELETING POSITION"
-0182   0008           00605         RETURN
-                      00606 
-                      00607 ; "POSSIBLE CURSOR POSITIONS: 0110 1001 1100"   
-0183   2???           00608 MOVE_AST_RIGHT CALL DELETE_BEFORE 
-0184   1D92           00609         BTFSS CURSOR_POS,3  ;"SKIP IF BIT3=1"
-0185   2???           00610         GOTO R1 ;"BIT3 is 0"
-0186   1D12           00611         BTFSS CURSOR_POS,2
-0187   2???           00612         GOTO R1 ;"BIT2 is 0"
-                      00613 
-0188   3006           00614         MOVLW b'00000110' ;"ROTATE"
-0189   0092           00615         MOVWF CURSOR_POS 
-018A   2???           00616         GOTO EXIT_RIGHT
-                      00617 
-018B   3002           00618 R1      MOVLW b'0000010'
-018C   0792           00619         ADDWF CURSOR_POS,1;
-018D   2???           00620         GOTO EXIT_RIGHT
-                      00621 
-018E   2???           00622 EXIT_RIGHT      CALL PRINT_ASTERISK 
-018F   0008           00623         RETURN
-                      00624 
-                      00625 ; "POSSIBLE CURSOR POSITIONS: 0110 1001 1100"
-0190   2???           00626 MOVE_AST_LEFT CALL DELETE_BEFORE
-0191   1992           00627         BTFSC CURSOR_POS,3  ;"SKIP IF BIT3=1"
-0192   2???           00628         GOTO L1 ;"BIT3 IS 1"
-                      00629 
-0193   300C           00630         MOVLW b'00001100' ;"ROTATE SINCE THE CURSOR IS IN THE LEFT MOST POSITION"
-0194   0092           00631         MOVWF CURSOR_POS 
-0195   2???           00632         GOTO EXIT_LEFT
-                      00633 
-0196   3004           00634 L1      MOVLW b'0000100'
-0197   0292           00635         SUBWF CURSOR_POS,1;
-0198   2???           00636         GOTO EXIT_LEFT
-                      00637 
-0199   2???           00638 EXIT_LEFT       CALL PRINT_ASTERISK 
-019A   0008           00639         RETURN
-                      00640 
-                      00641         END
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE 14
+018B   0392           00630         DECF    CURSOR_POS
+Message[305]: Using default destination of 1 (file).
+018C   0892           00631         MOVF    CURSOR_POS
+018D   1D14           00632         BTFSS   FLAG_REG, 2 ; Load it into either CARD1 or CARD2 depending on if it's the first or secon
+                            d card opened
+018E   00B9           00633         MOVWF   CELL_ADDRESS
+                      00634 
+018F   1914           00635         BTFSC   FLAG_REG, 2     ; If CONFIRM_STATUS is 0, i.e. the user hasn't yet selected a card, reve
+                            al the first card
+0190   2???           00636         CALL    CHECK_MODE
+0191   3004           00637         MOVLW   b'00000100'     ; Toggle the 3rd bit of the CONFIRM_STATUS register
+0192   0694           00638         XORWF   FLAG_REG, 1
+0193   2???           00639         CALL    RESET_CURSOR
+0194   0008           00640         RETURN
+                      00641 
+0195   3007           00642 MAIN_MENU_CONFIRMATION  MOVLW   b'00000111'; Check if the Mode selected is Mode 1(i.e. cursor is at pos 
+                            6)
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE 14
+LCD
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0196   0612           00643         XORWF   CURSOR_POS, 0
+0197   1D03           00644         BTFSS   STATUS, 2
+0198   2???           00645         GOTO    SKIP_MODE1_CONFIRMATION
+0199   1414           00646         BSF             FLAG_REG, 0
+019A   0008           00647         RETURN
+019B   300A           00648 SKIP_MODE1_CONFIRMATION MOVLW   b'00001010'; Check if the Mode selected is Mode 2(i.e. cursor is at pos 
+                            9)
+019C   0612           00649         XORWF   CURSOR_POS, 0
+019D   1D03           00650         BTFSS   STATUS, 2
+019E   2???           00651         GOTO    SKIP_MODE2_CONFIRMATION
+019F   1494           00652         BSF             FLAG_REG, 1
+01A0   0008           00653         RETURN
+01A1   1414           00654 SKIP_MODE2_CONFIRMATION BSF     FLAG_REG, 0     ; Otherwise, Mode is 3 select so set the first two bits 
+                            of the FLAG_REG
+01A2   1494           00655         BSF             FLAG_REG, 1
+01A3   0008           00656         RETURN
+                      00657 
+                      00658 
+01A4                  00659 HANDLE_UP_DOWN  ; Unless you're in the Main Menu, toggle the row that the cursor is at
+01A4   3000           00660         MOVLW   b'00000000'
+01A5   0614           00661         XORWF   FLAG_REG, 0     ; Check if you are in the Main Menu (i.e. Check if the last 2 bits of th
+                            e FLAG_REG are 0s)
+01A6   1903           00662         BTFSC   STATUS, 2
+01A7   0008           00663         RETURN
+01A8   3010           00664         MOVLW   b'00010000'
+01A9   0692           00665         XORWF   CURSOR_POS, 1
+01AA   2???           00666         CALL    MOVE_CURSOR
+01AB   2???           00667         CALL    SHOW_CURSOR
+01AC   0008           00668 SKIP_HANDLE_UP_DOWN  RETURN     
+                      00669 
+                      00670 ; ***********************************************************************       GAME MECHANICS       ***
+                            *******************************************************************
+01AD                  00671 CHECK_MODE 
+01AD   3003           00672         MOVLW   b'00000011' ; Mask the first two bits
+01AE   0514           00673         ANDWF   FLAG_REG, 0
+01AF   0095           00674         MOVWF   TMP     ; Store in a temporary register
+01B0   3001           00675         MOVLW   1               ; Load the number one in W
+01B1   0615           00676         XORWF   TMP, 0  ; Check if the user selected Mode 1
+01B2   1903           00677         BTFSC   STATUS, 2
+01B3   2???           00678         GOTO    CHECK_MATCH_MODE1
+01B4   3002           00679         MOVLW   2               ; Load the number two in W
+01B5   0615           00680         XORWF   TMP, 0  ; Check if the user selected Mode 2
+01B6   1903           00681         BTFSC   STATUS, 2
+01B7   2???           00682         GOTO    CHECK_MATCH_MODE2
+01B8   3003           00683         MOVLW   3               ; Load the number three in W
+01B9   0615           00684         XORWF   TMP, 0  ; Check if the user selected Mode 3
+01BA   1903           00685         BTFSC   STATUS, 2
+01BB   2???           00686         GOTO    CHECK_MATCH_MODE3
+01BC   0008           00687         RETURN
+                      00688         
+01BD                  00689 CHECK_MATCH_MODE1       ; Compare CARD1 and CARD2, if they match, then perform the action of the corresp
+                            onding game
+Message[305]: Using default destination of 1 (file).
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE 15
+LCD
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+01BD   08B1           00690         MOVF    CARD2       
+01BE   0630           00691         XORWF   CARD1, 0
+01BF   1903           00692         BTFSC   STATUS, 2
+01C0   2???           00693         GOTO    MATCH_MODE1
+01C1   2???           00694         GOTO    NO_MATCH_MODE1
+                      00695 
+01C2                  00696 CHECK_MATCH_MODE2
+Message[305]: Using default destination of 1 (file).
+01C2   08B1           00697         MOVF    CARD2
+01C3   0630           00698         XORWF   CARD1, 0
+01C4   1903           00699         BTFSC   STATUS, 2
+01C5   2???           00700         GOTO    MATCH_MODE2
+01C6   2???           00701         GOTO    NO_MATCH_MODE2
+                      00702 
+01C7                  00703 CHECK_MATCH_MODE3
+Message[305]: Using default destination of 1 (file).
+01C7   08B1           00704         MOVF    CARD2
+01C8   0630           00705         XORWF   CARD1, 0
+01C9   1903           00706         BTFSC   STATUS, 2
+01CA   2???           00707         GOTO    MATCH_MODE3
+01CB   2???           00708         GOTO    NO_MATCH_MODE3
+                      00709         
+01CC   0BB5           00710 MATCH_MODE1     DECFSZ  NUM_LEFT, 1
+01CD   0008           00711         RETURN
+01CE   1594           00712         BSF FLAG_REG, 3
+01CF   0008           00713         RETURN
+01D0                  00714 NO_MATCH_MODE1
+01D0   2???           00715         CALL    DELAYS
+                      00716         
+01D1   302A           00717         MOVLW   d'42'   ; Load Bias
+01D2   0712           00718         ADDWF   CURSOR_POS, 0   ; Add Bias
+01D3   0084           00719         MOVWF   FSR
+01D4   1380           00720         BCF     INDF, 7
+                      00721         
+01D5   2???           00722         CALL    PRINT_BOX
+                      00723 
+Message[305]: Using default destination of 1 (file).
+01D6   08B9           00724         MOVF    CELL_ADDRESS
+01D7   0092           00725         MOVWF   CURSOR_POS
+01D8   302A           00726         MOVLW   d'42'   ; Load Bias
+01D9   0712           00727         ADDWF   CURSOR_POS, 0   ; Add Bias
+01DA   0084           00728         MOVWF   FSR
+01DB   1380           00729         BCF     INDF, 7
+                      00730 
+01DC   2???           00731         CALL    PRINT_BOX
+                      00732 
+                      00733         ;   Check if weakness is 10, if it is, don't bother incrementing, as maximum weakness has been r
+                            eached
+01DD   300A           00734         MOVLW   d'10'
+01DE   0632           00735         XORWF   WEAKNESS, 0
+01DF   1903           00736         BTFSC   STATUS, 2
+01E0   0008           00737         RETURN
+                      00738         
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE 16
+LCD
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00739         
+                      00740         ; Check if the weakness has reached 9, i.e. the player should be shown a message "WEAK", and set
+                             the flag accordingly.
+01E1   3009           00741         MOVLW   d'9'
+01E2   0632           00742         XORWF   WEAKNESS, 0
+01E3   1903           00743         BTFSC   STATUS, 2
+01E4   1694           00744         BSF FLAG_REG, 5
+                      00745         
+                      00746         
+                      00747         ; Check if the weakness has reached 5, i.e. the player should be shown a message "AVG", and set 
+                            the flag accordingly.
+01E5   3005           00748         MOVLW   d'5'
+01E6   0632           00749         XORWF   WEAKNESS, 0
+01E7   1903           00750         BTFSC   STATUS, 2
+01E8   1614           00751         BSF FLAG_REG, 4
+                      00752         
+Message[305]: Using default destination of 1 (file).
+01E9   0AB2           00753         INCF    WEAKNESS    ; Increment the weakness (or number of misses)
+01EA   1C32           00754         BTFSS   WEAKNESS, 0 ; We will update the scoreboard once every two times, for convenience, updat
+                            e every time the LSB is 0
+01EB   0008           00755         RETURN
+                      00756         
+                      00757 
+01EC   3008           00758         MOVLW   b'00001000' 
+01ED   0092           00759         MOVWF   CURSOR_POS  ; Set the cursor position initially to 8, we will add some offset to this de
+                            pending on our weakness level
+01EE   3001           00760         MOVLW   1   ; We will calculate the offset based on the following algorithm: Add 1 to the weakne
+                            ss and store the result in a temporary variable. Shift the temporary variable to get the offset.
+01EF   0732           00761         ADDWF   WEAKNESS, 0
+01F0   0095           00762         MOVWF   TMP
+01F1   0C15           00763         RRF TMP, 0
+01F2   0792           00764         ADDWF   CURSOR_POS, 1
+01F3   2???           00765         CALL    PRINT_SHADE
+01F4   2???           00766         CALL    RESET_CURSOR
+01F5   0008           00767         RETURN
+                      00768         
+                      00769         
+01F6                  00770 MATCH_MODE2     ; TODO: Implement
+01F6   0008           00771         RETURN
+01F7                  00772 NO_MATCH_MODE2   ; TODO: Implement
+01F7   0008           00773         RETURN
+                      00774         
+01F8                  00775 MATCH_MODE3     ; TODO: Implement
+01F8   0008           00776         RETURN
+01F9                  00777 NO_MATCH_MODE3   ; TODO: Implement
+01F9   0008           00778         RETURN
+                      00779 ; ***********************************************************************       DELAYS      ************
+                            **********************************************************
+                      00780         
+                      00781 ; DELAYS: Causes a 1s delay, uses registers COUNT4, COUNT5 & COUNT6.
+                      00782         
+01FA   3000           00783 DELAYS  MOVLW   H'00'
+01FB   0091           00784         MOVWF   COUNT6
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE 17
+LCD
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+01FC   0090           00785         MOVWF   COUNT5
+01FD   3005           00786         MOVLW   0x5
+01FE   008F           00787         MOVWF   COUNT4
+                      00788         
+01FF   0F91           00789 LOOP    INCFSZ  COUNT6,F
+0200   2???           00790         GOTO    LOOP
+0201   0F90           00791         INCFSZ  COUNT5,F
+0202   2???           00792         GOTO    LOOP
+0203   0B8F           00793         DECFSZ  COUNT4,F
+0204   2???           00794         GOTO    LOOP
+0205   0008           00795         RETURN
+                      00796         
+                      00797 ; DELAYS: Causes a 3s delay, uses registers COUNT7, COUNT8 & COUNT9.
+                      00798     
+0206   3000           00799 DELAY3S MOVLW   H'00'
+0207   0098           00800         MOVWF   COUNT9
+0208   0097           00801         MOVWF   COUNT8
+0209   3010           00802         MOVLW   H'10'
+020A   0096           00803         MOVWF   COUNT7
+                      00804         
+020B   0F98           00805 LOOP3S  INCFSZ  COUNT9,F
+020C   2???           00806         GOTO    LOOP3S
+020D   0F97           00807         INCFSZ  COUNT8,F
+020E   2???           00808         GOTO    LOOP3S
+020F   0B96           00809         DECFSZ  COUNT7,F
+0210   2???           00810         GOTO    LOOP3S
+                      00811         
+0211   0008           00812         RETURN
+                      00813         
+                      00814 ; DELAYFMS: Causes a 40 ms delay, uses register COUNT1.
+                      00815         
+0212   3025           00816 DELAYFMS        MOVLW   d'37'
+0213   008C           00817         MOVWF   COUNT1
+0214   2???           00818 LOOP3   CALL    DELAYMS
+0215   0B8C           00819         DECFSZ  COUNT1,F
+0216   2???           00820         GOTO    LOOP3
+0217   0008           00821         RETURN
+                      00822 
+                      00823 ; DELAYMS: Causes a 1 ms delay, uses registers COUNT2 & COUNT 3.
+                      00824         
+0218   3000           00825 DELAYMS MOVLW d'0'          
+0219   008D           00826         MOVWF   COUNT2
+021A   304C           00827         MOVLW   d'76'
+021B   008E           00828         MOVWF   COUNT3
+021C   0F8D           00829 LOOP1   INCFSZ  COUNT2,F
+021D   2???           00830         GOTO    LOOP1
+021E   0000           00831 LOOP2   NOP     
+021F   0B8E           00832         DECFSZ  COUNT3,F
+0220   2???           00833         GOTO LOOP2
+0221   0008           00834         RETURN
+                      00835 
+                      00836 ; ***********************************************************************       MISC        ************
+                            **********************************************************
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE 18
+LCD
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00837 
+0222   1406           00838 BUZZ    BSF     PORTB, 0
+0223   2???           00839         CALL    DELAYS
+0224   1006           00840         BCF     PORTB, 0
+0225   0008           00841         RETURN
+                      00842 
+                      00843 ; "POSSIBLE CURSOR POSITIONS: 0110 1001 1100"   
+0226   2???           00844 MOVE_AST_RIGHT CALL DELETE_BEFORE 
+0227   1D92           00845         BTFSS CURSOR_POS,3  ;"SKIP IF BIT3=1"
+0228   2???           00846         GOTO R1 ;"BIT3 is 0"
+0229   1D12           00847         BTFSS CURSOR_POS,2
+022A   2???           00848         GOTO R1 ;"BIT2 is 0"
+                      00849 
+022B   3006           00850         MOVLW b'00000110' ;"ROTATE"
+022C   0092           00851         MOVWF CURSOR_POS 
+022D   2???           00852         GOTO EXIT_RIGHT
+                      00853 
+022E   3002           00854 R1      MOVLW d'2'
+022F   0792           00855         ADDWF CURSOR_POS,1
+                      00856 
+0230   2???           00857 EXIT_RIGHT      CALL PRINT_ASTERISK 
+0231   0008           00858         RETURN
+                      00859 
+                      00860 ; "POSSIBLE CURSOR POSITIONS: 0110 1001 1100"
+0232   2???           00861 MOVE_AST_LEFT CALL DELETE_BEFORE
+0233   1992           00862         BTFSC CURSOR_POS,3  ;"SKIP IF BIT3=1"
+0234   2???           00863         GOTO L1 ;"BIT3 IS 1"
+                      00864 
+0235   300C           00865         MOVLW b'00001100' ;"ROTATE SINCE THE CURSOR IS IN THE LEFT MOST POSITION"
+0236   0092           00866         MOVWF CURSOR_POS 
+0237   2???           00867         GOTO EXIT_LEFT
+                      00868 
+0238   3002           00869 L1      MOVLW d'2'
+0239   0292           00870         SUBWF CURSOR_POS,1;
+023A   2???           00871         GOTO EXIT_LEFT
+                      00872 
+023B   2???           00873 EXIT_LEFT       CALL PRINT_ASTERISK 
+023C   0008           00874         RETURN
+                      00875 
+                      00876         END
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE 19
 LCD
 
 SYMBOL TABLE
   LABEL                             VALUE 
 
-BUZZ                              0000017C
+BUZZ                              00000222
 C                                 00000000
-CELL_11                           00000034
-CELL_12                           00000035
-CELL_13                           00000036
-CELL_14                           00000037
-CELL_15                           00000038
-CELL_16                           00000039
+CARD1                             00000030
+CARD2                             00000031
+CELL_11                           0000002A
+CELL_12                           0000002B
+CELL_13                           0000002C
+CELL_14                           0000002D
+CELL_15                           0000002E
+CELL_16                           0000002F
 CELL_21                           0000003A
 CELL_22                           0000003B
 CELL_23                           0000003C
 CELL_24                           0000003D
 CELL_25                           0000003E
 CELL_26                           0000003F
+CELL_ADDRESS                      00000039
 CHAR_CODE                         00000013
-CLEAR_SCREEN                      000000A8
+CHECK_MATCH_MODE1                 000001BD
+CHECK_MATCH_MODE2                 000001C2
+CHECK_MATCH_MODE3                 000001C7
+CHECK_MODE                        000001AD
+CLEAR_SCREEN                      000000CB
 CONFIRM_BTN                       00000007
 COUNT1                            0000000C
 COUNT2                            0000000D
@@ -792,59 +1088,56 @@ COUNT8                            00000017
 COUNT9                            00000018
 CURSOR_POS                        00000012
 DC                                00000001
-DELAY3S                           00000160
-DELAYFMS                          0000016C
-DELAYMS                           00000172
-DELAYS                            00000154
-DELETE_BEFORE                     00000180
+DELAY3S                           00000206
+DELAYFMS                          00000212
+DELAYMS                           00000218
+DELAYS                            000001FA
+DELETE_BEFORE                     000000D2
 EEADR                             00000009
 EECON1                            00000088
 EECON2                            00000089
 EEDATA                            00000008
 EEIE                              00000006
 EEIF                              00000004
-ET                                000000AF
-EXIT_LEFT                         00000199
-EXIT_RIGHT                        0000018E
+ET                                000000C6
+EXIT_LEFT                         0000023B
+EXIT_RIGHT                        00000230
 F                                 00000001
-FINISH                            00000017
 FLAG_REG                          00000014
 FSR                               00000004
 GIE                               00000007
-HANDLE_CONFIRM                    00000136
-HANDLE_LEFT                       00000116
-HANDLE_RIGHT                      00000126
-HANDLE_UP_DOWN                    0000014B
-HIDE_TABLE                        0000008D
-INDF                              00000000
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE 15
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE 20
 LCD
 
 SYMBOL TABLE
   LABEL                             VALUE 
 
-INDIRECT                          0000000C
-INF                               00000058
-INIT                              00000017
+HALT_MODE1_WIN                    0000007C
+HANDLE_CONFIRM                    00000175
+HANDLE_LEFT                       00000155
+HANDLE_RIGHT                      00000165
+HANDLE_UP_DOWN                    000001A4
+HIDE_TABLE                        000000A9
+INDF                              00000000
+INF                               00000050
+INIT                              0000000C
 INTCON                            0000000B
 INTE                              00000004
 INTEDG                            00000006
 INTF                              00000001
-IN_GAME_LEFT                      0000011B
-IN_GAME_RIGHT                     0000012B
+IN_GAME_LEFT                      0000015A
+IN_GAME_RIGHT                     0000016A
 IRP                               00000007
-L1                                00000196
+L1                                00000238
 LEFT_BTN                          00000004
-LOOP                              00000159
-LOOP1                             00000176
-LOOP2                             00000178
-LOOP3                             0000016E
-LOOP3S                            00000165
-LOOPX                             00000010
-LOOPY                             00000013
-LOOP_M1                           00000063
-LOOP_M2                           00000066
-LOOP_M3                           00000069
+LOOP                              000001FF
+LOOP1                             0000021C
+LOOP2                             0000021E
+LOOP3                             00000214
+LOOP3S                            0000020B
+LOOP_M1                           0000005C
+LOOP_M2                           00000086
+LOOP_M3                           00000088
 LTR_0                             00000030
 LTR_1                             00000031
 LTR_2                             00000032
@@ -872,17 +1165,18 @@ LTR_L                             0000004C
 LTR_M                             0000004D
 LTR_N                             0000004E
 LTR_O                             0000004F
-LTR_P                             00000050
-LTR_Q                             00000051
-LTR_R                             00000052
-LTR_S                             00000053
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE 16
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE 21
 LCD
 
 SYMBOL TABLE
   LABEL                             VALUE 
 
+LTR_P                             00000050
+LTR_Q                             00000051
+LTR_R                             00000052
+LTR_S                             00000053
 LTR_SEPARATOR                     000000A3
+LTR_SHADE                         000000FF
 LTR_SPACE                         000000A0
 LTR_T                             00000054
 LTR_U                             00000055
@@ -892,55 +1186,71 @@ LTR_X                             00000058
 LTR_Y                             00000059
 LTR_Z                             0000005A
 MAIN                              00000006
-MAIN_MENU                         00000044
-MAIN_MENU_CONFIRMATION            0000013C
-MODE1                             00000061
-MODE1_OR_INF                      0000005E
-MODE1_SCOREBOARD                  0000009E
-MODE2                             00000064
-MODE2_OR_3                        0000005B
-MODE3                             00000067
-MOVE_AST_LEFT                     00000190
-MOVE_AST_RIGHT                    00000183
-MOVE_CURSOR                       000000B4
+MAIN_MENU                         0000003C
+MAIN_MENU_CONFIRMATION            00000195
+MATCH_MODE1                       000001CC
+MATCH_MODE2                       000001F6
+MATCH_MODE3                       000001F8
+MODE1                             00000059
+MODE1_AVG                         0000006E
+MODE1_OR_INF                      00000056
+MODE1_SCOREBOARD                  000000BA
+MODE1_SUPER                       00000075
+MODE1_WEAK                        00000066
+MODE2                             00000085
+MODE2_OR_3                        00000053
+MODE3                             00000087
+MOVE_AST_LEFT                     00000232
+MOVE_AST_RIGHT                    00000226
+MOVE_CURSOR                       000000F8
 NOT_PD                            00000003
 NOT_RBPU                          00000007
 NOT_TO                            00000004
+NO_MATCH_MODE1                    000001D0
+NO_MATCH_MODE2                    000001F7
+NO_MATCH_MODE3                    000001F9
+NUM_ERRORS                        00000036
+NUM_LEFT                          00000035
 OPTION_REG                        00000081
 PCL                               00000002
 PCLATH                            0000000A
-POPULATE_TABLE                    00000074
+POPULATE_TABLE                    00000090
 PORTA                             00000005
 PORTB                             00000006
-PRINT_1                           00000102
-PRINT_2                           00000105
-PRINT_3                           00000108
-PRINT_A                           000000D8
-PRINT_ASTERISK                    000000F6
-PRINT_BOX                         000000FC
-PRINT_D                           000000DB
-PRINT_E                           000000DE
-PRINT_G                           000000E1
-PRINT_M                           000000E4
-PRINT_O                           000000E7
-PRINT_R                           000000EA
-PRINT_S                           000000ED
-PRINT_SEPARATOR                   000000FF
-PRINT_SPACE                       000000F9
-PRINT_W                           000000F0
-PRINT_Y                           000000F3
-PS0                               00000000
-PS1                               00000001
-PS2                               00000002
-PSA                               00000003
-R1                                0000018B
-RA0                               00000000
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE 17
+PRINT_1                           00000141
+PRINT_2                           00000144
+PRINT_3                           00000147
+PRINT_A                           00000108
+PRINT_ASTERISK                    00000132
+PRINT_BOX                         00000138
+PRINT_D                           0000010B
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE 22
 LCD
 
 SYMBOL TABLE
   LABEL                             VALUE 
 
+PRINT_E                           0000010E
+PRINT_G                           00000111
+PRINT_K                           00000114
+PRINT_M                           00000117
+PRINT_O                           0000011A
+PRINT_P                           0000011D
+PRINT_R                           00000120
+PRINT_S                           00000123
+PRINT_SEPARATOR                   0000013E
+PRINT_SHADE                       0000013B
+PRINT_SPACE                       00000135
+PRINT_U                           00000126
+PRINT_V                           00000129
+PRINT_W                           0000012C
+PRINT_Y                           0000012F
+PS0                               00000000
+PS1                               00000001
+PS2                               00000002
+PSA                               00000003
+R1                                0000022E
+RA0                               00000000
 RA1                               00000001
 RA2                               00000002
 RA3                               00000003
@@ -950,26 +1260,35 @@ RB1                               00000001
 RB2                               00000002
 RB3                               00000003
 RB4                               00000004
-RB4_INT                           0000010B
+RB4_INT                           0000014A
 RB5                               00000005
 RB6                               00000006
 RB7                               00000007
 RBIE                              00000003
 RBIF                              00000000
 RD                                00000000
+RESET_CURSOR                      00000103
 RIGHT_BTN                         00000005
+ROW1                              00000033
+ROW2                              00000034
 RP0                               00000005
 RP1                               00000006
-SETUP                             0000006A
-SHOW_CURSOR                       000000CD
-SKIP_HANDLE_UP_DOWN               00000153
-SKIP_MODE1_CONFIRMATION           00000142
-SKIP_MODE2_CONFIRMATION           00000148
+SETUP                             00000089
+SHOW_CURSOR                       000000ED
+SKIP_HANDLE_UP_DOWN               000001AC
+SKIP_MODE1_CONFIRMATION           0000019B
+SKIP_MODE2_CONFIRMATION           000001A1
 STATUS                            00000003
 T0CS                              00000005
 T0IE                              00000005
 T0IF                              00000002
 T0SE                              00000004
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE 23
+LCD
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
 TMP                               00000015
 TMR0                              00000001
 TMR0IE                            00000005
@@ -991,17 +1310,12 @@ TRISB6                            00000006
 TRISB7                            00000007
 UP_DOWN_BTN                       00000006
 W                                 00000000
-WELCOME_SCREEN                    00000033
+WEAKNESS                          00000032
+WELCOME_SCREEN                    00000028
 WR                                00000001
 WREN                              00000002
-MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-16-2019  22:54:39         PAGE 18
-LCD
-
-SYMBOL TABLE
-  LABEL                             VALUE 
-
 WRERR                             00000003
-WRITE_CHAR                        000000BF
+WRITE_CHAR                        000000D6
 Z                                 00000002
 _CONFIG                           00002007
 _CP_OFF                           00003FFF
@@ -1027,8 +1341,14 @@ _WDT_ON                           00003FFF
 _XT_OSC                           00003FFD
 __16F84A                          00000001
 
+MPASM 5.83  /HOME/MALEK/MPLABXPROJECTS/MEMOR   4-17-2019  22:21:31         PAGE 24
+LCD
+
+
+
+
 Errors   :     0
-Warnings :     2 reported,     0 suppressed
-Messages :     6 reported,     0 suppressed
+Warnings :     0 reported,     0 suppressed
+Messages :    13 reported,     0 suppressed
 
 

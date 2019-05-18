@@ -1,8 +1,13 @@
-Message[302] /home/malek/MPLABXProjects/Memory Game.X/main.asm 94 : Register in operand not in bank 0.  Ensure that bank bits are correct.
-Message[302] /home/malek/MPLABXProjects/Memory Game.X/main.asm 96 : Register in operand not in bank 0.  Ensure that bank bits are correct.
-Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 109 : Using default destination of 1 (file).
-Warning[203] /home/malek/MPLABXProjects/Memory Game.X/main.asm 217 : Found opcode in column 1. (CALL)
-Warning[203] /home/malek/MPLABXProjects/Memory Game.X/main.asm 222 : Found opcode in column 1. (CALL)
-Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 477 : Using default destination of 1 (file).
-Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 495 : Using default destination of 1 (file).
-Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 603 : Using default destination of 1 (file).
+Message[302] /home/malek/MPLABXProjects/Memory Game.X/main.asm 115 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] /home/malek/MPLABXProjects/Memory Game.X/main.asm 117 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 268 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 377 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 579 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 597 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 630 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 631 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 690 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 697 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 704 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 724 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 753 : Using default destination of 1 (file).

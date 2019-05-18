@@ -1,3 +1,12 @@
-Message[302] /home/malek/MPLABXProjects/Memory Game.X/main.asm 61 : Register in operand not in bank 0.  Ensure that bank bits are correct.
-Message[302] /home/malek/MPLABXProjects/Memory Game.X/main.asm 63 : Register in operand not in bank 0.  Ensure that bank bits are correct.
-Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 79 : Using default destination of 1 (file).
+Message[302] /home/malek/MPLABXProjects/Memory Game.X/main.asm 112 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[302] /home/malek/MPLABXProjects/Memory Game.X/main.asm 114 : Register in operand not in bank 0.  Ensure that bank bits are correct.
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 330 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 517 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 535 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 568 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 569 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 628 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 635 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 642 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 659 : Using default destination of 1 (file).
+Message[305] /home/malek/MPLABXProjects/Memory Game.X/main.asm 668 : Using default destination of 1 (file).
